@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://mosque-display-api.adzan.workers.dev/").replace(/\/$/, "") + "/api";
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://mosque-display-api.kantorsunsal.workers.dev/").replace(/\/$/, "") + "/api";
 
 // Types
 export interface MosqueInfo {
