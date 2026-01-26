@@ -6,7 +6,7 @@ compatibility_date = "2024-11-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "mosque-db"
-database_id = "40580833-7999-4768-a230-4084ed1d3949"  # Replace after running: wrangler d1 create mosque-db
+database_id = "40580833-7999-4768-a230-4084ed1d3949"
 
 # Environment Variables
 [vars]
