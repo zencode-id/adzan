@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { mosqueApi, type MosqueInfo } from "./lib/api";
+import { getThemeById } from "./lib/themes";
 import {
   calculatePrayerTimes,
   getNextPrayer,
@@ -8,7 +9,10 @@ import {
 
 export function DisplayScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [mosqueInfo, setMosqueInfo] = useState<MosqueInfo | null>(null);
+  const [mosqueInfo, setMosqueInfo] = useState< MosqueInfo | null>(null);
+
+  // Get current theme
+  const theme = useMemo(() => getThemeById(mosqueInfo?.themeId), [mosqueInfo]);
 
   // Update clock every second
   useEffect(() => {
@@ -147,15 +151,24 @@ export function DisplayScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-emerald-950 via-emerald-900 to-emerald-950 text-white overflow-hidden relative">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-(--primary-gold) rounded-full blur-[200px] transform translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-400 rounded-full blur-[150px] transform -translate-x-1/2 translate-y-1/2" />
+    <div
+      className="min-h-screen text-white overflow-hidden relative transition-colors duration-1000"
+      style={{ backgroundColor: theme.colors.bg }}
+    >
+      {/* Dynamic Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div
+          className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full blur-[200px] transform translate-x-1/2 -translate-y-1/2"
+          style={{ backgroundColor: theme.colors.primary }}
+        />
+        <div
+          className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full blur-[150px] transform -translate-x-1/2 translate-y-1/2"
+          style={{ backgroundColor: theme.colors.accent }}
+        />
       </div>
 
-      {/* Islamic Pattern Overlay */}
-      <div className="absolute inset-0 islamic-pattern opacity-[0.02]" />
+      {/* Theme Pattern Overlay */}
+      <div className={`absolute inset-0 ${theme.pattern} opacity-[0.05]`} />
 
       {/* Content */}
       <div className="relative z-10 h-screen flex flex-col p-8">
@@ -164,9 +177,12 @@ export function DisplayScreen() {
           <div className="flex items-center gap-4">
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
-              style={{ backgroundColor: "var(--primary-gold)" }}
+              style={{ backgroundColor: theme.colors.primary }}
             >
-              <span className="material-symbols-outlined text-emerald-950 text-4xl">
+              <span
+                className="material-symbols-outlined text-4xl"
+                style={{ color: theme.colors.bg }}
+              >
                 mosque
               </span>
             </div>
@@ -185,7 +201,10 @@ export function DisplayScreen() {
             <p className="text-white/60 text-sm uppercase tracking-widest">
               {formatDate(currentTime)}
             </p>
-            <p className="text-(--primary-gold) text-sm font-medium mt-1">
+            <p
+              className="text-sm font-medium mt-1"
+              style={{ color: theme.colors.primary }}
+            >
               🌙 Ramadhan 1447 H
             </p>
           </div>
@@ -210,9 +229,18 @@ export function DisplayScreen() {
 
             {/* Next Prayer Countdown */}
             {nextPrayer && (
-              <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/10">
+              <div
+                className="backdrop-blur-sm rounded-3xl p-6 border transition-colors duration-500"
+                style={{
+                  backgroundColor: theme.colors.card,
+                  borderColor: theme.colors.border
+                }}
+              >
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="material-symbols-outlined text-(--primary-gold)">
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ color: theme.colors.primary }}
+                  >
                     notifications_active
                   </span>
                   <p className="text-white/60 text-sm uppercase tracking-widest">
@@ -221,7 +249,10 @@ export function DisplayScreen() {
                 </div>
                 <div className="flex items-end justify-between">
                   <div>
-                    <h2 className="text-4xl font-bold text-(--primary-gold)">
+                    <h2
+                      className="text-4xl font-bold"
+                      style={{ color: theme.colors.primary }}
+                    >
                       {nextPrayer.name}
                     </h2>
                     <p className="text-white/60 mt-1">
@@ -253,14 +284,26 @@ export function DisplayScreen() {
 
           {/* Right - Prayer Times Grid */}
           <div className="col-span-7 flex flex-col justify-center">
-            <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10">
+            <div
+              className="backdrop-blur-sm rounded-3xl p-8 border transition-colors duration-500"
+              style={{
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border
+              }}
+            >
               <h3 className="text-white/40 text-sm uppercase tracking-[0.3em] mb-6 text-center">
                 Jadwal Sholat Hari Ini
               </h3>
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Imsak */}
-                <div className="bg-linear-to-br from-orange-500/20 to-orange-600/10 rounded-2xl p-5 border border-orange-500/20">
+                <div
+                  className="rounded-2xl p-5 border transition-all"
+                  style={{
+                    backgroundColor: "rgba(249, 115, 22, 0.1)", // orange-500 low opacity
+                    borderColor: "rgba(249, 115, 22, 0.2)"
+                  }}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-orange-400 text-2xl">
@@ -281,11 +324,12 @@ export function DisplayScreen() {
 
                 {/* Subuh */}
                 <div
-                  className={`rounded-2xl p-5 border transition-all ${
-                    nextPrayer?.name === "Subuh"
-                      ? "bg-(--primary-gold)/20 border-(--primary-gold)/50 ring-2 ring-(--primary-gold)/30"
-                      : "bg-white/5 border-white/10"
-                  }`}
+                  className={`rounded-2xl p-5 border transition-all`}
+                  style={{
+                    backgroundColor: nextPrayer?.name === "Subuh" ? `${theme.colors.primary}33` : "rgba(255,255,255,0.03)",
+                    borderColor: nextPrayer?.name === "Subuh" ? theme.colors.primary : theme.colors.border,
+                    boxShadow: nextPrayer?.name === "Subuh" ? `0 0 15px ${theme.colors.primary}33` : "none"
+                  }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -298,7 +342,10 @@ export function DisplayScreen() {
                     </div>
                     <span
                       className="text-3xl font-bold"
-                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                      style={{
+                        fontFamily: "Space Grotesk, sans-serif",
+                        color: nextPrayer?.name === "Subuh" ? theme.colors.primary : "white"
+                      }}
                     >
                       {prayerTimes.subuh}
                     </span>
@@ -307,11 +354,12 @@ export function DisplayScreen() {
 
                 {/* Dzuhur */}
                 <div
-                  className={`rounded-2xl p-5 border transition-all ${
-                    nextPrayer?.name === "Dzuhur"
-                      ? "bg-(--primary-gold)/20 border-(--primary-gold)/50 ring-2 ring-(--primary-gold)/30"
-                      : "bg-white/5 border-white/10"
-                  }`}
+                  className={`rounded-2xl p-5 border transition-all`}
+                  style={{
+                    backgroundColor: nextPrayer?.name === "Dzuhur" ? `${theme.colors.primary}33` : "rgba(255,255,255,0.03)",
+                    borderColor: nextPrayer?.name === "Dzuhur" ? theme.colors.primary : theme.colors.border,
+                    boxShadow: nextPrayer?.name === "Dzuhur" ? `0 0 15px ${theme.colors.primary}33` : "none"
+                  }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -324,7 +372,10 @@ export function DisplayScreen() {
                     </div>
                     <span
                       className="text-3xl font-bold"
-                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                      style={{
+                        fontFamily: "Space Grotesk, sans-serif",
+                        color: nextPrayer?.name === "Dzuhur" ? theme.colors.primary : "white"
+                      }}
                     >
                       {prayerTimes.dzuhur}
                     </span>
@@ -333,11 +384,12 @@ export function DisplayScreen() {
 
                 {/* Ashar */}
                 <div
-                  className={`rounded-2xl p-5 border transition-all ${
-                    nextPrayer?.name === "Ashar"
-                      ? "bg-(--primary-gold)/20 border-(--primary-gold)/50 ring-2 ring-(--primary-gold)/30"
-                      : "bg-white/5 border-white/10"
-                  }`}
+                  className={`rounded-2xl p-5 border transition-all`}
+                  style={{
+                    backgroundColor: nextPrayer?.name === "Ashar" ? `${theme.colors.primary}33` : "rgba(255,255,255,0.03)",
+                    borderColor: nextPrayer?.name === "Ashar" ? theme.colors.primary : theme.colors.border,
+                    boxShadow: nextPrayer?.name === "Ashar" ? `0 0 15px ${theme.colors.primary}33` : "none"
+                  }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -350,7 +402,10 @@ export function DisplayScreen() {
                     </div>
                     <span
                       className="text-3xl font-bold"
-                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                      style={{
+                        fontFamily: "Space Grotesk, sans-serif",
+                        color: nextPrayer?.name === "Ashar" ? theme.colors.primary : "white"
+                      }}
                     >
                       {prayerTimes.ashar}
                     </span>
@@ -359,15 +414,16 @@ export function DisplayScreen() {
 
                 {/* Maghrib */}
                 <div
-                  className={`rounded-2xl p-5 border transition-all ${
-                    nextPrayer?.name === "Maghrib"
-                      ? "bg-(--primary-gold)/20 border-(--primary-gold)/50 ring-2 ring-(--primary-gold)/30"
-                      : "bg-linear-to-br from-emerald-500/20 to-emerald-600/10 border-emerald-500/20"
-                  }`}
+                  className={`rounded-2xl p-5 border transition-all`}
+                  style={{
+                    backgroundColor: nextPrayer?.name === "Maghrib" ? `${theme.colors.accent}33` : `${theme.colors.accent}11`,
+                    borderColor: nextPrayer?.name === "Maghrib" ? theme.colors.accent : `${theme.colors.accent}33`,
+                    boxShadow: nextPrayer?.name === "Maghrib" ? `0 0 15px ${theme.colors.accent}33` : "none"
+                  }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-emerald-400 text-2xl">
+                      <span className="material-symbols-outlined text-2xl" style={{ color: theme.colors.accent }}>
                         restaurant
                       </span>
                       <span className="text-lg font-medium text-white/80">
@@ -375,8 +431,11 @@ export function DisplayScreen() {
                       </span>
                     </div>
                     <span
-                      className="text-3xl font-bold text-emerald-400"
-                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                      className="text-3xl font-bold"
+                      style={{
+                        fontFamily: "Space Grotesk, sans-serif",
+                        color: theme.colors.accent
+                      }}
                     >
                       {prayerTimes.maghrib}
                     </span>
@@ -385,11 +444,12 @@ export function DisplayScreen() {
 
                 {/* Isya */}
                 <div
-                  className={`rounded-2xl p-5 border transition-all ${
-                    nextPrayer?.name === "Isya"
-                      ? "bg-(--primary-gold)/20 border-(--primary-gold)/50 ring-2 ring-(--primary-gold)/30"
-                      : "bg-white/5 border-white/10"
-                  }`}
+                  className={`rounded-2xl p-5 border transition-all`}
+                  style={{
+                    backgroundColor: nextPrayer?.name === "Isya" ? `${theme.colors.primary}33` : "rgba(255,255,255,0.03)",
+                    borderColor: nextPrayer?.name === "Isya" ? theme.colors.primary : theme.colors.border,
+                    boxShadow: nextPrayer?.name === "Isya" ? `0 0 15px ${theme.colors.primary}33` : "none"
+                  }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -402,7 +462,10 @@ export function DisplayScreen() {
                     </div>
                     <span
                       className="text-3xl font-bold"
-                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                      style={{
+                        fontFamily: "Space Grotesk, sans-serif",
+                        color: nextPrayer?.name === "Isya" ? theme.colors.primary : "white"
+                      }}
                     >
                       {prayerTimes.isya}
                     </span>
@@ -415,30 +478,37 @@ export function DisplayScreen() {
 
         {/* Footer - Running Text */}
         <footer className="mt-8">
-          <div className="bg-(--primary-gold) rounded-2xl py-3 px-6 overflow-hidden">
+          <div
+            className="rounded-2xl py-3 px-6 overflow-hidden transition-colors duration-500"
+            style={{ backgroundColor: theme.colors.primary }}
+          >
             <div className="animate-marquee whitespace-nowrap">
-              <span className="text-emerald-950 font-semibold mx-8">
+              <span
+                className="font-semibold mx-8"
+                style={{ color: theme.colors.bg }}
+              >
                 🕌 Selamat Datang di {mosqueInfo.name}
               </span>
-              <span className="text-emerald-950/70 mx-8">•</span>
-              <span className="text-emerald-950 font-semibold mx-8">
+              <span className="mx-8 opacity-50" style={{ color: theme.colors.bg }}>•</span>
+              <span
+                className="font-semibold mx-8"
+                style={{ color: theme.colors.bg }}
+              >
                 📍 {mosqueInfo.address.street}, {mosqueInfo.address.city}
               </span>
-              <span className="text-emerald-950/70 mx-8">•</span>
-              <span className="text-emerald-950 font-semibold mx-8">
+              <span className="mx-8 opacity-50" style={{ color: theme.colors.bg }}>•</span>
+              <span
+                className="font-semibold mx-8"
+                style={{ color: theme.colors.bg }}
+              >
                 🌙 Ramadhan Mubarak 1447 H
               </span>
-              <span className="text-emerald-950/70 mx-8">•</span>
-              <span className="text-emerald-950 font-semibold mx-8">
+              <span className="mx-8 opacity-50" style={{ color: theme.colors.bg }}>•</span>
+              <span
+                className="font-semibold mx-8"
+                style={{ color: theme.colors.bg }}
+              >
                 ☎️ {mosqueInfo.phone || "Hubungi Takmir"}
-              </span>
-              <span className="text-emerald-950/70 mx-8">•</span>
-              <span className="text-emerald-950 font-semibold mx-8">
-                🕌 Selamat Datang di {mosqueInfo.name}
-              </span>
-              <span className="text-emerald-950/70 mx-8">•</span>
-              <span className="text-emerald-950 font-semibold mx-8">
-                📍 {mosqueInfo.address.street}, {mosqueInfo.address.city}
               </span>
             </div>
           </div>

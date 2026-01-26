@@ -9,8 +9,9 @@ import {
   SystemEvents,
   LocationSettings,
   QuickStats,
+  ThemeSelector,
 } from "./components/dashboard";
-import { systemEventsApi, type MosqueInfo } from "./lib/api";
+import { systemEventsApi, mosqueApi, type MosqueInfo } from "./lib/api";
 
 // Page header configurations
 const pageConfig: Record<string, { title: string; description: string }> = {
@@ -55,6 +56,44 @@ function App() {
   const [isOnline] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([]);
+
+  // Mosque and Theme State
+  const [mosqueInfo, setMosqueInfo] = useState<MosqueInfo | null>(null);
+  const [selectedThemeId, setSelectedThemeId] = useState("emerald");
+  const [isSavingTheme, setIsSavingTheme] = useState(false);
+
+  // Fetch mosque info on mount
+  useEffect(() => {
+    const fetchMosqueInfo = async () => {
+      try {
+        const info = await mosqueApi.get();
+        if (info) {
+          setMosqueInfo(info);
+          setSelectedThemeId(info.themeId || "emerald");
+        }
+      } catch (error) {
+        console.error("Failed to fetch mosque info:", error);
+      }
+    };
+    fetchMosqueInfo();
+  }, []);
+
+  const handleThemeSave = async () => {
+    if (!mosqueInfo) return;
+
+    setIsSavingTheme(true);
+    try {
+      const updatedInfo = { ...mosqueInfo, themeId: selectedThemeId };
+      await mosqueApi.update(updatedInfo);
+      setMosqueInfo(updatedInfo);
+      alert("Tema berhasil disimpan!");
+    } catch (error) {
+      console.error("Failed to save theme:", error);
+      alert("Gagal menyimpan tema.");
+    } finally {
+      setIsSavingTheme(false);
+    }
+  };
 
   // Format timestamp helper - defined before use
   const formatTimestamp = (dateString: string): string => {
@@ -303,6 +342,14 @@ function App() {
                 </div>
               </div>
             </div>
+
+            {/* Theme Selection */}
+            <ThemeSelector
+              selectedThemeId={selectedThemeId}
+              onThemeSelect={setSelectedThemeId}
+              onSave={handleThemeSave}
+              isLoading={isSavingTheme}
+            />
 
             {/* Instructions Card */}
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">

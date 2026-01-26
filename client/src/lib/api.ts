@@ -27,6 +27,7 @@ export interface MosqueInfo {
   timezone: string;
   phone?: string;
   email?: string;
+  themeId?: string;
 }
 
 export interface MosqueInfoRaw {
@@ -45,6 +46,7 @@ export interface MosqueInfoRaw {
   timezone: string;
   phone: string;
   email: string;
+  theme_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -123,29 +125,30 @@ async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
 }
 
 // Transform raw mosque data to structured format
-function transformMosqueData(raw: MosqueInfoRaw): MosqueInfo {
+export const transformMosqueData = (data: MosqueInfoRaw): MosqueInfo => {
   return {
-    id: raw.id,
-    name: raw.name,
-    type: raw.type as "masjid" | "musholla",
+    id: data.id,
+    name: data.name,
+    type: data.type as "masjid" | "musholla",
     address: {
-      street: raw.street,
-      village: raw.village,
-      district: raw.district,
-      city: raw.city,
-      province: raw.province,
-      postalCode: raw.postal_code,
-      country: raw.country,
+      street: data.street || "",
+      village: data.village || "",
+      district: data.district || "",
+      city: data.city || "",
+      province: data.province || "",
+      postalCode: data.postal_code || "",
+      country: data.country || "Indonesia",
     },
     coordinates: {
-      latitude: raw.latitude,
-      longitude: raw.longitude,
+      latitude: data.latitude || "0",
+      longitude: data.longitude || "0",
     },
-    timezone: raw.timezone,
-    phone: raw.phone,
-    email: raw.email,
+    timezone: data.timezone || "Asia/Jakarta (WIB - UTC+7)",
+    phone: data.phone || "",
+    email: data.email || "",
+    themeId: data.theme_id || "emerald",
   };
-}
+};
 
 // ============================================
 // Mosque Settings API
