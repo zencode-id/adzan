@@ -1,5 +1,10 @@
-// API Configuration
 const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://mosque-display-api.adzan.workers.dev/").replace(/\/$/, "") + "/api";
+
+console.table({
+  "Config Mode": import.meta.env.MODE,
+  "VITE_API_URL": import.meta.env.VITE_API_URL || "Using Default",
+  "Final API URL": API_BASE_URL
+});
 
 // Types
 export interface MosqueInfo {
