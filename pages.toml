@@ -1,0 +1,18 @@
+# Cloudflare Pages Build Configuration
+[build]
+command = "cd client && npm install && npm run build"
+publish = "client/dist"
+
+[build.environment]
+NODE_VERSION = "20"
+NPM_VERSION = "10"
+
+# Development environment variables (preview)
+[[deployments]]
+branch = "develop"
+[deployments.environment]
+VITE_API_URL = "https://mosque-display-api.workers.dev"
+
+# Production environment variables
+[production.environment]
+VITE_API_URL = "https://mosque-display-api.workers.dev"

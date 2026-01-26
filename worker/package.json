@@ -1,0 +1,23 @@
+{
+  "name": "mosque-display-worker",
+  "version": "1.0.0",
+  "description": "Mosque Display API - Cloudflare Workers with D1",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create mosque-db",
+    "db:migrate": "wrangler d1 execute mosque-db --local --file=./migrations/0001_init.sql",
+    "db:migrate:prod": "wrangler d1 execute mosque-db --file=./migrations/0001_init.sql"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "drizzle-orm": "^0.38.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "drizzle-kit": "^0.30.0",
+    "wrangler": "^3.95.0",
+    "typescript": "^5.7.0"
+  }
+}

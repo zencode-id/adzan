@@ -1,0 +1,23 @@
+name = "mosque-display-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "mosque-db"
+database_id = "40580833-7999-4768-a230-4084ed1d3949"  # Replace after running: wrangler d1 create mosque-db
+
+# Environment Variables
+[vars]
+ENVIRONMENT = "production"
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Custom domain (optional - configure after deployment)
+# [routes]
+# pattern = "api.yourdomain.com/*"
+# zone_name = "yourdomain.com"

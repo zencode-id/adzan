@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+/* CSS Custom Properties / Design Tokens */
+:root {
+  --primary-gold: #d4af37;
+  --emerald-deep: #064e3b;
+  --emerald-light: #065f46;
+  --bg-light: #f8fafc;
+}
+
+/* Base Styles */
+body {
+  font-family: "Outfit", system-ui, sans-serif;
+  background-color: var(--bg-light);
+  color: #1e293b;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Islamic Pattern Background */
+.islamic-pattern {
+  background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuBsVO6P0yuUQHhwtrYF4z1jwZp6s6Y_ruhn2E6kpm9qNMc1kphTA71_lt1wJ7pmlNvuHjNWps9wazpQ4XkbPQH6zs-_PG4-micMngUYbdyJ6arNxzxh5c_C6f_HiX_kJ4AvRqT1t314ojdiHfn3TwQOz0YEKnlodOTCEJKkLzLSoVzHuXZhJVKrkIi4_kl2gCPFg3gxV9s8XqRSEWxSgrtOY_zcoZz2mzPbw9ASI60e3XgLPztMJmSCQmX-SXmBnH7t6MqVv5-6vQ);
+  opacity: 0.03;
+}
+
+/* Material Symbols Settings */
+.material-symbols-outlined {
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Gauge Component */
+.gauge-container {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+
+.gauge-circle {
+  transform: rotate(-90deg);
+}
+
+/* Animation Keyframes */
+@keyframes pulse-subtle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* Transition Utilities */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glass Effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Card Hover Effect */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+}
+
+/* Button Press Effect */
+.btn-press:active {
+  transform: scale(0.98);
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--primary-gold) 0%, #f5d77a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Marquee Animation */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: inline-block;
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
