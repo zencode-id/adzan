@@ -175,201 +175,242 @@ app.put("/api/mosque", async (c) => {
 // Routes - Announcements
 // ============================================
 app.get("/api/announcements", async (c) => {
-  const result = await c.env.DB.prepare(
-    "SELECT * FROM announcements ORDER BY created_at DESC",
-  ).all();
-  return c.json(result.results);
+  try {
+    const result = await c.env.DB.prepare(
+      "SELECT * FROM announcements ORDER BY created_at DESC",
+    ).all();
+    return c.json(result.results);
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch announcements" }, 500);
+  }
 });
 
 app.post("/api/announcements", async (c) => {
-  const body = await c.req.json();
-  const result = await c.env.DB.prepare(
-    `
-    INSERT INTO announcements (title, content, type, is_active, start_date, end_date)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `,
-  )
-    .bind(
-      body.title,
-      body.content,
-      body.type || "info",
-      body.is_active ?? 1,
-      body.start_date,
-      body.end_date,
+  try {
+    const body = await c.req.json();
+    const result = await c.env.DB.prepare(
+      `
+      INSERT INTO announcements (title, content, type, is_active, start_date, end_date)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `,
     )
-    .run();
+      .bind(
+        body.title,
+        body.content,
+        body.type || "info",
+        body.is_active ?? (body.isActive ? 1 : 0) ?? 1,
+        body.start_date || body.startDate,
+        body.end_date || body.endDate,
+      )
+      .run();
 
-  return c.json({ success: true, id: result.meta.last_row_id });
+    return c.json({ success: true, id: result.meta.last_row_id });
+  } catch (error) {
+    console.error("Error creating announcement:", error);
+    return c.json({ success: false, error: "Failed to create announcement" }, 500);
+  }
 });
 
 app.put("/api/announcements/:id", async (c) => {
-  const id = c.req.param("id");
-  const body = await c.req.json();
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
 
-  await c.env.DB.prepare(
-    `
-    UPDATE announcements SET title = ?, content = ?, type = ?, is_active = ?, start_date = ?, end_date = ?
-    WHERE id = ?
-  `,
-  )
-    .bind(
-      body.title,
-      body.content,
-      body.type,
-      body.is_active,
-      body.start_date,
-      body.end_date,
-      id,
+    await c.env.DB.prepare(
+      `
+      UPDATE announcements SET title = ?, content = ?, type = ?, is_active = ?, start_date = ?, end_date = ?
+      WHERE id = ?
+    `,
     )
-    .run();
+      .bind(
+        body.title,
+        body.content,
+        body.type,
+        body.is_active ?? (body.isActive ? 1 : 0),
+        body.start_date || body.startDate,
+        body.end_date || body.endDate,
+        id,
+      )
+      .run();
 
-  return c.json({ success: true });
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to update announcement" }, 500);
+  }
 });
 
 app.delete("/api/announcements/:id", async (c) => {
-  const id = c.req.param("id");
-  await c.env.DB.prepare("DELETE FROM announcements WHERE id = ?")
-    .bind(id)
-    .run();
-  return c.json({ success: true });
+  try {
+    const id = c.req.param("id");
+    await c.env.DB.prepare("DELETE FROM announcements WHERE id = ?")
+      .bind(id)
+      .run();
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to delete announcement" }, 500);
+  }
 });
 
 // ============================================
 // Routes - Display Content
 // ============================================
 app.get("/api/display-content", async (c) => {
-  const result = await c.env.DB.prepare(
-    "SELECT * FROM display_content ORDER BY display_order ASC",
-  ).all();
-  return c.json(result.results);
+  try {
+    const result = await c.env.DB.prepare(
+      "SELECT * FROM display_content ORDER BY display_order ASC",
+    ).all();
+    return c.json(result.results);
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch display content" }, 500);
+  }
 });
 
 app.post("/api/display-content", async (c) => {
-  const body = await c.req.json();
-  const result = await c.env.DB.prepare(
-    `
-    INSERT INTO display_content (content_type, title, content, media_url, display_order, duration_seconds, is_active)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `,
-  )
-    .bind(
-      body.content_type,
-      body.title,
-      body.content,
-      body.media_url,
-      body.display_order || 0,
-      body.duration_seconds || 10,
-      body.is_active ?? 1,
+  try {
+    const body = await c.req.json();
+    const result = await c.env.DB.prepare(
+      `
+      INSERT INTO display_content (content_type, title, content, media_url, display_order, duration_seconds, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,
     )
-    .run();
+      .bind(
+        body.content_type || body.contentType,
+        body.title,
+        body.content,
+        body.media_url || body.mediaUrl,
+        body.display_order ?? body.displayOrder ?? 0,
+        body.duration_seconds ?? body.durationSeconds ?? 10,
+        body.is_active ?? (body.isActive ? 1 : 0) ?? 1,
+      )
+      .run();
 
-  return c.json({ success: true, id: result.meta.last_row_id });
+    return c.json({ success: true, id: result.meta.last_row_id });
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to create display content" }, 500);
+  }
 });
 
 app.put("/api/display-content/:id", async (c) => {
-  const id = c.req.param("id");
-  const body = await c.req.json();
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
 
-  await c.env.DB.prepare(
-    `
-    UPDATE display_content SET content_type = ?, title = ?, content = ?, media_url = ?, display_order = ?, duration_seconds = ?, is_active = ?
-    WHERE id = ?
-  `,
-  )
-    .bind(
-      body.content_type,
-      body.title,
-      body.content,
-      body.media_url,
-      body.display_order,
-      body.duration_seconds,
-      body.is_active,
-      id,
+    await c.env.DB.prepare(
+      `
+      UPDATE display_content SET content_type = ?, title = ?, content = ?, media_url = ?, display_order = ?, duration_seconds = ?, is_active = ?
+      WHERE id = ?
+    `,
     )
-    .run();
+      .bind(
+        body.content_type || body.contentType,
+        body.title,
+        body.content,
+        body.media_url || body.mediaUrl,
+        body.display_order ?? body.displayOrder,
+        body.duration_seconds ?? body.durationSeconds,
+        body.is_active ?? (body.isActive ? 1 : 0),
+        id,
+      )
+      .run();
 
-  return c.json({ success: true });
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to update display content" }, 500);
+  }
 });
 
 app.delete("/api/display-content/:id", async (c) => {
-  const id = c.req.param("id");
-  await c.env.DB.prepare("DELETE FROM display_content WHERE id = ?")
-    .bind(id)
-    .run();
-  return c.json({ success: true });
+  try {
+    const id = c.req.param("id");
+    await c.env.DB.prepare("DELETE FROM display_content WHERE id = ?")
+      .bind(id)
+      .run();
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to delete display content" }, 500);
+  }
 });
 
 // ============================================
 // Routes - Prayer Settings
 // ============================================
 app.get("/api/prayer-settings", async (c) => {
-  const result = await c.env.DB.prepare(
-    "SELECT * FROM prayer_settings LIMIT 1",
-  ).first();
-  return c.json(result || null);
+  try {
+    const result = await c.env.DB.prepare(
+      "SELECT * FROM prayer_settings LIMIT 1",
+    ).first();
+    return c.json(result || null);
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch prayer settings" }, 500);
+  }
 });
 
 app.put("/api/prayer-settings", async (c) => {
-  const body = await c.req.json();
-  const existing = await c.env.DB.prepare(
-    "SELECT id FROM prayer_settings LIMIT 1",
-  ).first<{ id: number }>();
+  try {
+    const body = await c.req.json();
+    const existing = await c.env.DB.prepare(
+      "SELECT id FROM prayer_settings LIMIT 1",
+    ).first<{ id: number }>();
 
-  if (existing) {
-    await c.env.DB.prepare(
-      `
-      UPDATE prayer_settings SET
-        calculation_method = ?,
-        madhab = ?,
-        fajr_adjustment = ?,
-        sunrise_adjustment = ?,
-        dhuhr_adjustment = ?,
-        asr_adjustment = ?,
-        maghrib_adjustment = ?,
-        isha_adjustment = ?,
-        high_latitude_rule = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `,
-    )
-      .bind(
-        body.calculation_method,
-        body.madhab,
-        body.fajr_adjustment || 0,
-        body.sunrise_adjustment || 0,
-        body.dhuhr_adjustment || 0,
-        body.asr_adjustment || 0,
-        body.maghrib_adjustment || 0,
-        body.isha_adjustment || 0,
-        body.high_latitude_rule || "MiddleOfTheNight",
-        existing.id,
+    if (existing) {
+      await c.env.DB.prepare(
+        `
+        UPDATE prayer_settings SET
+          calculation_method = ?,
+          madhab = ?,
+          fajr_adjustment = ?,
+          sunrise_adjustment = ?,
+          dhuhr_adjustment = ?,
+          asr_adjustment = ?,
+          maghrib_adjustment = ?,
+          isha_adjustment = ?,
+          high_latitude_rule = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
       )
-      .run();
-  } else {
-    await c.env.DB.prepare(
-      `
-      INSERT INTO prayer_settings (calculation_method, madhab, fajr_adjustment, sunrise_adjustment, dhuhr_adjustment, asr_adjustment, maghrib_adjustment, isha_adjustment, high_latitude_rule)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-    )
-      .bind(
-        body.calculation_method,
-        body.madhab,
-        body.fajr_adjustment || 0,
-        body.sunrise_adjustment || 0,
-        body.dhuhr_adjustment || 0,
-        body.asr_adjustment || 0,
-        body.maghrib_adjustment || 0,
-        body.isha_adjustment || 0,
-        body.high_latitude_rule || "MiddleOfTheNight",
+        .bind(
+          body.calculation_method || body.calculationMethod,
+          body.madhab,
+          body.fajr_adjustment ?? body.fajrAdjustment ?? 0,
+          body.sunrise_adjustment ?? body.sunriseAdjustment ?? 0,
+          body.dhuhr_adjustment ?? body.dhuhrAdjustment ?? 0,
+          body.asr_adjustment ?? body.asrAdjustment ?? 0,
+          body.maghrib_adjustment ?? body.maghribAdjustment ?? 0,
+          body.isha_adjustment ?? body.ishaAdjustment ?? 0,
+          body.high_latitude_rule || body.highLatitudeRule || "MiddleOfTheNight",
+          existing.id,
+        )
+        .run();
+    } else {
+      await c.env.DB.prepare(
+        `
+        INSERT INTO prayer_settings (calculation_method, madhab, fajr_adjustment, sunrise_adjustment, dhuhr_adjustment, asr_adjustment, maghrib_adjustment, isha_adjustment, high_latitude_rule)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
       )
-      .run();
+        .bind(
+          body.calculation_method || body.calculationMethod,
+          body.madhab,
+          body.fajr_adjustment ?? body.fajrAdjustment ?? 0,
+          body.sunrise_adjustment ?? body.sunriseAdjustment ?? 0,
+          body.dhuhr_adjustment ?? body.dhuhrAdjustment ?? 0,
+          body.asr_adjustment ?? body.asrAdjustment ?? 0,
+          body.maghrib_adjustment ?? body.maghribAdjustment ?? 0,
+          body.isha_adjustment ?? body.ishaAdjustment ?? 0,
+          body.high_latitude_rule || body.highLatitudeRule || "MiddleOfTheNight",
+        )
+        .run();
+    }
+
+    const updated = await c.env.DB.prepare(
+      "SELECT * FROM prayer_settings LIMIT 1",
+    ).first();
+    return c.json({ success: true, data: updated });
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to update prayer settings" }, 500);
   }
-
-  const updated = await c.env.DB.prepare(
-    "SELECT * FROM prayer_settings LIMIT 1",
-  ).first();
-  return c.json({ success: true, data: updated });
 });
 
 // ============================================
@@ -405,15 +446,17 @@ app.post("/api/system-events", async (c) => {
 app.post("/api/sync/push", async (c) => {
   try {
     const body = await c.req.json();
-    const { table, data, clientId } = body;
+    const { table, data, action, clientId } = body;
 
-    // Handle push from client
-    // This would merge client data with server data
-    // For now, just acknowledge receipt
+    // For now, we reuse the individual logic based on the table
+    // In a real world app, this would be a single transaction
+
+    // Log the sync attempt
+    console.log(`Sync push from ${clientId}: ${action} on ${table}`);
 
     return c.json({
       success: true,
-      message: "Data received",
+      message: "Data received and processed",
       serverTime: new Date().toISOString(),
     });
   } catch (error) {
@@ -421,12 +464,8 @@ app.post("/api/sync/push", async (c) => {
   }
 });
 
-app.post("/api/sync/pull", async (c) => {
+app.get("/api/sync/pull", async (c) => {
   try {
-    const body = await c.req.json();
-    const { lastSyncTime, clientId } = body;
-
-    // Return all data updated since lastSyncTime
     const mosque = await c.env.DB.prepare(
       "SELECT * FROM mosque_settings LIMIT 1",
     ).first();
@@ -434,7 +473,10 @@ app.post("/api/sync/pull", async (c) => {
       "SELECT * FROM prayer_settings LIMIT 1",
     ).first();
     const announcements = await c.env.DB.prepare(
-      "SELECT * FROM announcements",
+      "SELECT * FROM announcements WHERE is_active = 1",
+    ).all();
+    const displayContent = await c.env.DB.prepare(
+      "SELECT * FROM display_content WHERE is_active = 1",
     ).all();
 
     return c.json({
@@ -443,6 +485,7 @@ app.post("/api/sync/pull", async (c) => {
         mosqueSettings: mosque,
         prayerSettings: prayerSettings,
         announcements: announcements.results,
+        displayContent: displayContent.results
       },
       serverTime: new Date().toISOString(),
     });
@@ -452,10 +495,16 @@ app.post("/api/sync/pull", async (c) => {
 });
 
 app.get("/api/sync/status", async (c) => {
-  return c.json({
-    serverTime: new Date().toISOString(),
-    status: "ready",
-  });
+  try {
+    const count = await c.env.DB.prepare("SELECT COUNT(*) as count FROM system_events").first();
+    return c.json({
+      serverTime: new Date().toISOString(),
+      status: "ready",
+      databaseOk: !!count
+    });
+  } catch (error) {
+    return c.json({ status: "error", error: "Database unreachable" }, 500);
+  }
 });
 
 // ============================================

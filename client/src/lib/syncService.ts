@@ -42,7 +42,7 @@ export interface SyncResult {
 // ============================================
 // API Configuration
 // ============================================
-const API_BASE_URL = "https://mosque-display-api.adzan.workers.dev";
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://mosque-display-api.adzan.workers.dev/").replace(/\/$/, "");
 
 // ============================================
 // Sync Service Class
@@ -190,23 +190,48 @@ class SyncService {
     const endpoint = this._getEndpoint(item.table);
 
     switch (item.action) {
-      case "create":
-      case "update": {
+      case "create": {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item.data),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        // Update local record with remote ID
+        if (result.id || result.data?.id) {
+          const remoteId = result.id || result.data.id;
+          await this._updateLocalRemoteId(item.table, item.localId, remoteId);
+        }
+        break;
+      }
+
+      case "update": {
+        // Find remote ID
+        const localRecord = await (localDb as any)[item.table].where("localId").equals(item.localId).first();
+        const remoteId = localRecord?.remoteId;
+
+        if (!remoteId && item.table !== "mosqueSettings") {
+          throw new Error("Cannot update record without remote ID");
+        }
+
+        const url = (remoteId && item.table !== "mosqueSettings")
+          ? `${API_BASE_URL}${endpoint}/${remoteId}`
+          : `${API_BASE_URL}${endpoint}`;
+
+        const response = await fetch(url, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(item.data),
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        // Update local record with remote ID
-        if (item.table === "mosqueSettings" && result.data?.id) {
-          await mosqueSettingsLocal.markSynced(item.localId, result.data.id);
+          throw new Error(`HTTP ${response.status} ${response.statusText}`);
         }
         break;
       }
@@ -232,7 +257,7 @@ class SyncService {
   // ============================================
   private async _pullFromServer(): Promise<void> {
     try {
-      // Pull mosque settings
+      // 1. Pull mosque settings
       const mosqueResponse = await fetch(`${API_BASE_URL}/api/mosque`);
       if (mosqueResponse.ok) {
         const mosqueData = await mosqueResponse.json();
@@ -240,8 +265,25 @@ class SyncService {
           await this._mergeRemoteMosqueSettings(mosqueData);
         }
       }
+
+      // 2. Pull announcements (could expand to other tables)
+      // This is basic sync - for smarter sync, use dedicated /sync/pull endpoint
     } catch (error) {
       console.warn("Failed to pull from server:", error);
+    }
+  }
+
+  private async _updateLocalRemoteId(table: string, localId: string, remoteId: number): Promise<void> {
+    const tableInstance = (localDb as any)[table];
+    if (tableInstance) {
+      const record = await tableInstance.where("localId").equals(localId).first();
+      if (record) {
+        await tableInstance.update(record.id!, {
+          syncStatus: "synced",
+          syncedAt: Date.now(),
+          remoteId: remoteId
+        });
+      }
     }
   }
 
