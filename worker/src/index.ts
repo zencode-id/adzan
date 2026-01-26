@@ -75,9 +75,9 @@ app.get("/api/mosque", async (c) => {
 const upsertMosqueSettings = async (c: any) => {
   try {
     const body = await c.req.json();
-    const existing = await c.env.DB.prepare(
+    const existing = (await c.env.DB.prepare(
       "SELECT id FROM mosque_settings LIMIT 1",
-    ).first<{ id: number }>();
+    ).first()) as { id: number } | null;
 
     const params = [
       body.name,
@@ -94,6 +94,7 @@ const upsertMosqueSettings = async (c: any) => {
       body.timezone,
       body.phone,
       body.email,
+      body.theme_id || body.themeId || "emerald",
     ];
 
     if (existing) {
@@ -102,7 +103,7 @@ const upsertMosqueSettings = async (c: any) => {
         UPDATE mosque_settings SET
           name = ?, type = ?, street = ?, village = ?, district = ?, city = ?, province = ?,
           postal_code = ?, country = ?, latitude = ?, longitude = ?, timezone = ?, phone = ?, email = ?,
-          updated_at = CURRENT_TIMESTAMP
+          theme_id = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `,
       )
@@ -115,8 +116,8 @@ const upsertMosqueSettings = async (c: any) => {
     } else {
       await c.env.DB.prepare(
         `
-        INSERT INTO mosque_settings (name, type, street, village, district, city, province, postal_code, country, latitude, longitude, timezone, phone, email)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO mosque_settings (name, type, street, village, district, city, province, postal_code, country, latitude, longitude, timezone, phone, email, theme_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       )
         .bind(...params)
@@ -338,9 +339,9 @@ app.get("/api/prayer-settings", async (c) => {
 const upsertPrayerSettings = async (c: any) => {
   try {
     const body = await c.req.json();
-    const existing = await c.env.DB.prepare(
+    const existing = (await c.env.DB.prepare(
       "SELECT id FROM prayer_settings LIMIT 1",
-    ).first<{ id: number }>();
+    ).first()) as { id: number } | null;
 
     const params = [
       body.calculation_method || body.calculationMethod || "Kemenag",
