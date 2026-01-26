@@ -204,6 +204,11 @@ app.post("/api/announcements", async (c) => {
       )
       .run();
 
+    // Log event
+    await c.env.DB.prepare(
+      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
+    ).bind("Announcement created", `New announcement: ${body.title}`, "info").run();
+
     return c.json({ success: true, id: result.meta.last_row_id });
   } catch (error) {
     console.error("Error creating announcement:", error);
@@ -233,6 +238,11 @@ app.put("/api/announcements/:id", async (c) => {
       )
       .run();
 
+    // Log event
+    await c.env.DB.prepare(
+      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
+    ).bind("Announcement updated", `Updated: ${body.title}`, "info").run();
+
     return c.json({ success: true });
   } catch (error) {
     return c.json({ success: false, error: "Failed to update announcement" }, 500);
@@ -245,6 +255,12 @@ app.delete("/api/announcements/:id", async (c) => {
     await c.env.DB.prepare("DELETE FROM announcements WHERE id = ?")
       .bind(id)
       .run();
+
+    // Log event
+    await c.env.DB.prepare(
+      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
+    ).bind("Announcement deleted", `ID: ${id}`, "warning").run();
+
     return c.json({ success: true });
   } catch (error) {
     return c.json({ success: false, error: "Failed to delete announcement" }, 500);
@@ -284,6 +300,11 @@ app.post("/api/display-content", async (c) => {
         body.is_active ?? (body.isActive ? 1 : 0) ?? 1,
       )
       .run();
+
+    // Log event
+    await c.env.DB.prepare(
+      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
+    ).bind("Display content added", `${body.title || "Untitled"}`, "info").run();
 
     return c.json({ success: true, id: result.meta.last_row_id });
   } catch (error) {
