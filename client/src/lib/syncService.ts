@@ -13,6 +13,25 @@ import {
 // ============================================
 export type SyncState = "idle" | "syncing" | "success" | "error" | "offline";
 
+export interface RemoteMosqueData {
+  id: number;
+  name: string;
+  type: "masjid" | "musholla";
+  street?: string;
+  village?: string;
+  district?: string;
+  city?: string;
+  province?: string;
+  postal_code?: string;
+  country: string;
+  latitude?: string;
+  longitude?: string;
+  timezone: string;
+  phone?: string;
+  email?: string;
+  updated_at: string;
+}
+
 export interface SyncResult {
   success: boolean;
   synced: number;
@@ -172,7 +191,7 @@ class SyncService {
 
     switch (item.action) {
       case "create":
-      case "update":
+      case "update": {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -190,8 +209,9 @@ class SyncService {
           await mosqueSettingsLocal.markSynced(item.localId, result.data.id);
         }
         break;
+      }
 
-      case "delete":
+      case "delete": {
         const deleteResponse = await fetch(
           `${API_BASE_URL}${endpoint}/${item.data?.remoteId}`,
           {
@@ -203,6 +223,7 @@ class SyncService {
           throw new Error(`HTTP ${deleteResponse.status}`);
         }
         break;
+      }
     }
   }
 
@@ -227,7 +248,9 @@ class SyncService {
   // ============================================
   // Merge remote data with local
   // ============================================
-  private async _mergeRemoteMosqueSettings(remote: any): Promise<void> {
+  private async _mergeRemoteMosqueSettings(
+    remote: RemoteMosqueData,
+  ): Promise<void> {
     const local = await mosqueSettingsLocal.get();
 
     if (!local) {
