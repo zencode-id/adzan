@@ -9,7 +9,7 @@ import {
 } from "./localDatabase";
 
 // ============================================
-// Sync Service Types
+// Sync Service Types (Updated Check)
 // ============================================
 export type SyncState = "idle" | "syncing" | "success" | "error" | "offline";
 
