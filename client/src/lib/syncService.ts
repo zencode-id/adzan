@@ -6,7 +6,6 @@ import {
   getPendingChangesCount,
   mosqueSettingsLocal,
   type SyncQueueItem,
-  type LocalMosqueSettings,
 } from "./localDatabase";
 
 // ============================================
