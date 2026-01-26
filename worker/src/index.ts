@@ -198,7 +198,7 @@ app.post("/api/announcements", async (c) => {
         body.title,
         body.content,
         body.type || "info",
-        body.is_active ?? (body.isActive ? 1 : 0) ?? 1,
+        body.is_active ?? (body.isActive ? 1 : 0),
         body.start_date || body.startDate,
         body.end_date || body.endDate,
       )
@@ -297,7 +297,7 @@ app.post("/api/display-content", async (c) => {
         body.media_url || body.mediaUrl,
         body.display_order ?? body.displayOrder ?? 0,
         body.duration_seconds ?? body.durationSeconds ?? 10,
-        body.is_active ?? (body.isActive ? 1 : 0) ?? 1,
+        body.is_active ?? (body.isActive ? 1 : 0),
       )
       .run();
 
