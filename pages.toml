@@ -11,8 +11,8 @@ NPM_VERSION = "10"
 [[deployments]]
 branch = "develop"
 [deployments.environment]
-VITE_API_URL = "https://mosque-display-api.workers.dev"
+VITE_API_URL = "https://mosque-display-api.adzan.workers.dev"
 
 # Production environment variables
 [production.environment]
-VITE_API_URL = "https://mosque-display-api.workers.dev"
+VITE_API_URL = "https://mosque-display-api.adzan.workers.dev"
