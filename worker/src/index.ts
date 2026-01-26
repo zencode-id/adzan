@@ -71,67 +71,47 @@ app.get("/api/mosque", async (c) => {
   return c.json(result || null);
 });
 
-app.put("/api/mosque", async (c) => {
+// Helper for mosque settings upsert
+const upsertMosqueSettings = async (c: any) => {
   try {
     const body = await c.req.json();
     const existing = await c.env.DB.prepare(
       "SELECT id FROM mosque_settings LIMIT 1",
     ).first<{ id: number }>();
 
+    const params = [
+      body.name,
+      body.type,
+      body.address?.street || body.street,
+      body.address?.village || body.village,
+      body.address?.district || body.district,
+      body.address?.city || body.city,
+      body.address?.province || body.province,
+      body.address?.postalCode || body.postalCode || body.postal_code,
+      body.address?.country || body.country,
+      body.coordinates?.latitude || body.latitude,
+      body.coordinates?.longitude || body.longitude,
+      body.timezone,
+      body.phone,
+      body.email,
+    ];
+
     if (existing) {
       await c.env.DB.prepare(
         `
         UPDATE mosque_settings SET
-          name = ?,
-          type = ?,
-          street = ?,
-          village = ?,
-          district = ?,
-          city = ?,
-          province = ?,
-          postal_code = ?,
-          country = ?,
-          latitude = ?,
-          longitude = ?,
-          timezone = ?,
-          phone = ?,
-          email = ?,
+          name = ?, type = ?, street = ?, village = ?, district = ?, city = ?, province = ?,
+          postal_code = ?, country = ?, latitude = ?, longitude = ?, timezone = ?, phone = ?, email = ?,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `,
       )
-        .bind(
-          body.name,
-          body.type,
-          body.address?.street || body.street,
-          body.address?.village || body.village,
-          body.address?.district || body.district,
-          body.address?.city || body.city,
-          body.address?.province || body.province,
-          body.address?.postalCode || body.postal_code,
-          body.address?.country || body.country,
-          body.coordinates?.latitude || body.latitude,
-          body.coordinates?.longitude || body.longitude,
-          body.timezone,
-          body.phone,
-          body.email,
-          existing.id,
-        )
+        .bind(...params, existing.id)
         .run();
 
-      // Log event
       await c.env.DB.prepare(
-        `
-        INSERT INTO system_events (title, description, event_type)
-        VALUES (?, ?, ?)
-      `,
-      )
-        .bind(
-          "Mosque settings updated",
-          `${body.name} settings have been updated`,
-          "info",
-        )
-        .run();
+        "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
+      ).bind("Mosque updated", `${body.name} settings updated`, "info").run();
     } else {
       await c.env.DB.prepare(
         `
@@ -139,37 +119,24 @@ app.put("/api/mosque", async (c) => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       )
-        .bind(
-          body.name,
-          body.type,
-          body.address?.street || body.street,
-          body.address?.village || body.village,
-          body.address?.district || body.district,
-          body.address?.city || body.city,
-          body.address?.province || body.province,
-          body.address?.postalCode || body.postal_code,
-          body.address?.country || body.country,
-          body.coordinates?.latitude || body.latitude,
-          body.coordinates?.longitude || body.longitude,
-          body.timezone,
-          body.phone,
-          body.email,
-        )
+        .bind(...params)
         .run();
+
+      await c.env.DB.prepare(
+        "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
+      ).bind("Mosque initialized", `${body.name} settings created`, "success").run();
     }
 
-    const updated = await c.env.DB.prepare(
-      "SELECT * FROM mosque_settings LIMIT 1",
-    ).first();
+    const updated = await c.env.DB.prepare("SELECT * FROM mosque_settings LIMIT 1").first();
     return c.json({ success: true, data: updated });
-  } catch (error) {
-    console.error("Error updating mosque:", error);
-    return c.json(
-      { success: false, error: "Failed to update mosque settings" },
-      500,
-    );
+  } catch (error: any) {
+    console.error("Error upserting mosque settings:", error);
+    return c.json({ success: false, error: "Failed to save mosque settings", message: error.message }, 500);
   }
-});
+};
+
+app.put("/api/mosque", upsertMosqueSettings);
+app.post("/api/mosque", upsertMosqueSettings);
 
 // ============================================
 // Routes - Announcements
@@ -367,72 +334,61 @@ app.get("/api/prayer-settings", async (c) => {
   }
 });
 
-app.put("/api/prayer-settings", async (c) => {
+// Helper for prayer settings upsert
+const upsertPrayerSettings = async (c: any) => {
   try {
     const body = await c.req.json();
     const existing = await c.env.DB.prepare(
       "SELECT id FROM prayer_settings LIMIT 1",
     ).first<{ id: number }>();
 
+    const params = [
+      body.calculation_method || body.calculationMethod || "Kemenag",
+      body.madhab || "Shafi",
+      body.fajr_adjustment ?? body.fajrAdjustment ?? 0,
+      body.sunrise_adjustment ?? body.sunriseAdjustment ?? 0,
+      body.dhuhr_adjustment ?? body.dhuhrAdjustment ?? 0,
+      body.asr_adjustment ?? body.asrAdjustment ?? 0,
+      body.maghrib_adjustment ?? body.maghribAdjustment ?? 0,
+      body.isha_adjustment ?? body.ishaAdjustment ?? 0,
+      body.high_latitude_rule ?? body.highLatitudeRule ?? "MiddleOfTheNight",
+    ];
+
     if (existing) {
       await c.env.DB.prepare(
         `
         UPDATE prayer_settings SET
-          calculation_method = ?,
-          madhab = ?,
-          fajr_adjustment = ?,
-          sunrise_adjustment = ?,
-          dhuhr_adjustment = ?,
-          asr_adjustment = ?,
-          maghrib_adjustment = ?,
-          isha_adjustment = ?,
-          high_latitude_rule = ?,
-          updated_at = CURRENT_TIMESTAMP
+          calculation_method = ?, madhab = ?, fajr_adjustment = ?, sunrise_adjustment = ?,
+          dhuhr_adjustment = ?, asr_adjustment = ?, maghrib_adjustment = ?, isha_adjustment = ?,
+          high_latitude_rule = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `,
       )
-        .bind(
-          body.calculation_method || body.calculationMethod,
-          body.madhab,
-          body.fajr_adjustment ?? body.fajrAdjustment ?? 0,
-          body.sunrise_adjustment ?? body.sunriseAdjustment ?? 0,
-          body.dhuhr_adjustment ?? body.dhuhrAdjustment ?? 0,
-          body.asr_adjustment ?? body.asrAdjustment ?? 0,
-          body.maghrib_adjustment ?? body.maghribAdjustment ?? 0,
-          body.isha_adjustment ?? body.ishaAdjustment ?? 0,
-          body.high_latitude_rule || body.highLatitudeRule || "MiddleOfTheNight",
-          existing.id,
-        )
+        .bind(...params, existing.id)
         .run();
     } else {
       await c.env.DB.prepare(
         `
-        INSERT INTO prayer_settings (calculation_method, madhab, fajr_adjustment, sunrise_adjustment, dhuhr_adjustment, asr_adjustment, maghrib_adjustment, isha_adjustment, high_latitude_rule)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO prayer_settings (
+          calculation_method, madhab, fajr_adjustment, sunrise_adjustment,
+          dhuhr_adjustment, asr_adjustment, maghrib_adjustment, isha_adjustment,
+          high_latitude_rule
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       )
-        .bind(
-          body.calculation_method || body.calculationMethod,
-          body.madhab,
-          body.fajr_adjustment ?? body.fajrAdjustment ?? 0,
-          body.sunrise_adjustment ?? body.sunriseAdjustment ?? 0,
-          body.dhuhr_adjustment ?? body.dhuhrAdjustment ?? 0,
-          body.asr_adjustment ?? body.asrAdjustment ?? 0,
-          body.maghrib_adjustment ?? body.maghribAdjustment ?? 0,
-          body.isha_adjustment ?? body.ishaAdjustment ?? 0,
-          body.high_latitude_rule || body.highLatitudeRule || "MiddleOfTheNight",
-        )
+        .bind(...params)
         .run();
     }
 
-    const updated = await c.env.DB.prepare(
-      "SELECT * FROM prayer_settings LIMIT 1",
-    ).first();
+    const updated = await c.env.DB.prepare("SELECT * FROM prayer_settings LIMIT 1").first();
     return c.json({ success: true, data: updated });
-  } catch (error) {
-    return c.json({ success: false, error: "Failed to update prayer settings" }, 500);
+  } catch (error: any) {
+    return c.json({ success: false, error: "Failed to save prayer settings", message: error.message }, 500);
   }
-});
+};
+
+app.put("/api/prayer-settings", upsertPrayerSettings);
+app.post("/api/prayer-settings", upsertPrayerSettings);
 
 // ============================================
 // Routes - System Events
