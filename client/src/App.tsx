@@ -8,6 +8,7 @@ import {
   SecurityStatus,
   SystemEvents,
   LocationSettings,
+  QuickStats,
 } from "./components/dashboard";
 import { systemEventsApi, type MosqueInfo } from "./lib/api";
 
@@ -137,12 +138,104 @@ function App() {
 
       case "dashboard":
         return (
-          <div className="text-center py-20">
-            <span className="material-symbols-outlined text-8xl text-slate-200 mb-4">
-              dashboard
-            </span>
-            <h3 className="text-xl font-bold text-slate-400">Dashboard</h3>
-            <p className="text-slate-400">Coming soon...</p>
+          <div className="space-y-8">
+            {/* Quick Overview Stats */}
+            <QuickStats />
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Left Column - Welcome & Preview */}
+              <div className="lg:col-span-8 space-y-8">
+                <div className="bg-linear-to-br from-emerald-900 via-emerald-800 to-emerald-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+                  <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10">
+                    <span className="material-symbols-outlined text-[150px]">
+                      mosque
+                    </span>
+                  </div>
+
+                  <div className="relative z-10">
+                    <h2 className="text-3xl font-bold mb-2">Selamat Datang, Admin</h2>
+                    <p className="text-white/70 max-w-lg mb-6">
+                      Sistem monitoring dan kontrol display masjid Anda berjalan dengan normal.
+                      Semua data tersinkronisasi dengan Cloudflare D1.
+                    </p>
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => setCurrentPage("location")}
+                        className="px-6 py-2 bg-(--primary-gold) text-emerald-950 font-bold rounded-xl btn-press shadow-lg"
+                      >
+                        Atur Lokasi
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage("display")}
+                        className="px-6 py-2 bg-white/10 border border-white/20 font-medium rounded-xl hover:bg-white/20 transition-all btn-press"
+                      >
+                        Lihat Display
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Integration with existing system components but tailored for overview */}
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="bg-slate-50/50 px-8 py-5 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="font-bold text-emerald-950 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-emerald-600">history</span>
+                      Aktivitas Terakhir
+                    </h3>
+                    <button
+                      onClick={() => setCurrentPage("system")}
+                      className="text-xs font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-widest"
+                    >
+                      Lihat Semua
+                    </button>
+                  </div>
+                  <div className="p-0">
+                    <SystemEvents events={systemEvents.slice(0, 5)} showTitle={false} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - Status & Specs */}
+              <div className="lg:col-span-4 space-y-8">
+                <SecurityStatus />
+
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+                  <h3 className="font-bold text-emerald-950 mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-600">memory</span>
+                    Resource Device
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-xs font-bold mb-1 uppercase tracking-tight text-slate-400">
+                        <span>CPU Load</span>
+                        <span>28%</span>
+                      </div>
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full w-[28%]"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs font-bold mb-1 uppercase tracking-tight text-slate-400">
+                        <span>RAM Usage</span>
+                        <span>1.2 GB / 2.0 GB</span>
+                      </div>
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full w-[60%]"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs font-bold mb-1 uppercase tracking-tight text-slate-400">
+                        <span>Storage</span>
+                        <span>22.4 GB / 32 GB</span>
+                      </div>
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 rounded-full w-[76%]"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         );
 

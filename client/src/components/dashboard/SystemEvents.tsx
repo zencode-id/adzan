@@ -35,48 +35,36 @@ function EventItem({ event }: EventItemProps) {
 }
 
 interface SystemEventsProps {
-  events?: SystemEvent[];
+  events: SystemEvent[];
+  showTitle?: boolean;
 }
 
-export function SystemEvents({
-  events = [
-    {
-      id: "1",
-      title: "System rebooted successfully",
-      description: "Manual restart initiated by Administrator",
-      timestamp: "Today, 08:30 AM",
-      type: "success",
-    },
-    {
-      id: "2",
-      title: "Content cache cleared",
-      description: "Automated weekly maintenance task",
-      timestamp: "Yesterday, 11:45 PM",
-      type: "info",
-    },
-    {
-      id: "3",
-      title: "Firmware update available",
-      description: "New version v2.5.0 ready for installation",
-      timestamp: "2 days ago",
-      type: "warning",
-    },
-  ],
-}: SystemEventsProps) {
+export function SystemEvents({ events, showTitle = true }: SystemEventsProps) {
   return (
-    <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-12 card-hover">
-      <div className="px-8 py-5 border-b border-slate-100">
-        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">
-          Recent System Events
-        </h3>
-      </div>
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      {showTitle && (
+        <div className="bg-slate-50/50 px-8 py-5 border-b border-slate-100">
+          <h3 className="font-bold text-emerald-950 flex items-center gap-2">
+            <span className="material-symbols-outlined text-emerald-600">
+              history
+            </span>
+            System Events & Activities
+          </h3>
+        </div>
+      )}
 
       <div className="divide-y divide-slate-50">
-        {events.map((event) => (
-          <EventItem key={event.id} event={event} />
-        ))}
+        {events.length > 0 ? (
+          events.map((event) => (
+            <EventItem key={event.id} event={event} />
+          ))
+        ) : (
+          <div className="px-8 py-10 text-center text-slate-400 italic">
+            No recent events recorded
+          </div>
+        )}
       </div>
-    </section>
+    </div>
   );
 }
 

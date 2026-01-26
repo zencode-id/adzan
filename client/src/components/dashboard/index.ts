@@ -6,3 +6,4 @@ export { SystemMaintenance } from "./SystemMaintenance";
 export { SecurityStatus } from "./SecurityStatus";
 export { SystemEvents } from "./SystemEvents";
 export { LocationSettings } from "./LocationSettings";
+export { QuickStats } from "./QuickStats";
