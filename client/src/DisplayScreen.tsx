@@ -7,6 +7,7 @@ import {
   type PrayerTimesResult,
 } from "./lib/prayerTimes";
 import { toHijri } from "./lib/hijriCalendar";
+import { useAdzan } from "./hooks/useAdzan";
 
 export function DisplayScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -32,13 +33,29 @@ export function DisplayScreen() {
     fetchMosque();
   }, []);
 
+  // Parse coordinates for adzan
+  const lat = mosqueInfo ? parseFloat(mosqueInfo.coordinates.latitude) : 0;
+  const lng = mosqueInfo ? parseFloat(mosqueInfo.coordinates.longitude) : 0;
+
+  // Adzan auto-playback when prayer time arrives
+  // The hook handles automatic adzan playback when prayer time is reached
+  useAdzan({
+    prayerSettings: {
+      latitude: lat,
+      longitude: lng,
+      calculationMethod: "Kemenag",
+    },
+    autoStart: mosqueInfo !== null && lat !== 0 && lng !== 0,
+  });
+
   // Calculate prayer times using useMemo to avoid cascading renders
   // Create a date-only value for comparison (prayer times only change daily)
   const dateString = currentTime.toDateString();
 
   // Create a stable date object for the current day (at midnight)
+  // Uses dateString to only recalculate when the date changes, not every second
   const todayDate = useMemo(() => {
-    const d = new Date(currentTime);
+    const d = new Date(dateString);
     d.setHours(0, 0, 0, 0);
     return d;
   }, [dateString]);
@@ -106,19 +123,24 @@ export function DisplayScreen() {
     });
   };
 
-  // Check if a prayer time is currently active (within 15 minutes of its time)
+  // Check if a prayer time is currently active (within 10 minutes of its time)
   const isActivePrayer = (prayerTimeStr: string): boolean => {
     if (!prayerTimeStr) return false;
 
-    const [hours, minutes] = prayerTimeStr.split(":").map(Number);
+    // Handle both "11:41" and "11.41" formats
+    const separator = prayerTimeStr.includes(":") ? ":" : ".";
+    const [hours, minutes] = prayerTimeStr.split(separator).map(Number);
+
+    if (isNaN(hours) || isNaN(minutes)) return false;
+
     const prayerDate = new Date(currentTime);
     prayerDate.setHours(hours, minutes, 0, 0);
 
     const diff = currentTime.getTime() - prayerDate.getTime();
-    const fifteenMinutes = 15 * 60 * 1000;
+    const tenMinutes = 10 * 60 * 1000;
 
-    // Active if current time is between prayer time and 15 minutes after
-    return diff >= 0 && diff <= fifteenMinutes;
+    // Active if current time is between prayer time and 10 minutes after
+    return diff >= 0 && diff <= tenMinutes;
   };
 
   // Calculate time until next prayer - returns HH:MM:SS format
