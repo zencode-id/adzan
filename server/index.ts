@@ -42,10 +42,18 @@ db.exec(`
     timezone TEXT DEFAULT 'Asia/Jakarta (WIB - UTC+7)',
     phone TEXT,
     email TEXT,
+    theme_id TEXT DEFAULT 'emerald-classic',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+// Pastikan kolom theme_id ada (untuk db lama)
+try {
+  db.exec("ALTER TABLE mosque_settings ADD COLUMN theme_id TEXT DEFAULT 'emerald-classic'");
+} catch (e) {
+  // Kolom mungkin sudah ada
+}
 
 // Tabel Pengumuman
 db.exec(`
@@ -93,6 +101,89 @@ db.exec(`
   )
 `);
 
+// Tabel Themes
+db.exec(`
+  CREATE TABLE IF NOT EXISTS themes (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    description TEXT,
+    preview_image_url TEXT,
+    is_builtin INTEGER DEFAULT 0,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// Tabel Theme Settings
+db.exec(`
+  CREATE TABLE IF NOT EXISTS theme_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    theme_id TEXT NOT NULL,
+    primary_color TEXT,
+    secondary_color TEXT,
+    accent_color TEXT,
+    text_color TEXT,
+    text_secondary_color TEXT,
+    bg_type TEXT,
+    bg_color TEXT,
+    bg_gradient TEXT,
+    bg_image_url TEXT,
+    bg_overlay_color TEXT,
+    bg_overlay_opacity REAL,
+    font_family TEXT,
+    clock_font_size TEXT,
+    clock_font_weight TEXT,
+    header_font_size TEXT,
+    prayer_font_size TEXT,
+    layout_type TEXT,
+    show_header INTEGER,
+    show_date INTEGER,
+    show_hijri_date INTEGER,
+    show_countdown INTEGER,
+    show_quote INTEGER,
+    show_prayer_bar INTEGER,
+    show_ornaments INTEGER,
+    ornament_style TEXT,
+    ornament_opacity REAL,
+    clock_style TEXT,
+    clock_separator TEXT,
+    clock_show_seconds INTEGER,
+    clock_animation TEXT,
+    transition_type TEXT,
+    transition_duration INTEGER,
+    prayer_bar_style TEXT,
+    prayer_bar_position TEXT,
+    highlight_current_prayer INTEGER,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (theme_id) REFERENCES themes(id)
+  )
+`);
+
+// Tabel Theme Schedules
+db.exec(`
+  CREATE TABLE IF NOT EXISTS theme_schedules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    theme_id TEXT NOT NULL,
+    name TEXT,
+    schedule_type TEXT NOT NULL,
+    start_time TEXT,
+    end_time TEXT,
+    prayer_trigger TEXT,
+    offset_minutes INTEGER DEFAULT 0,
+    duration_minutes INTEGER DEFAULT 30,
+    start_date TEXT,
+    end_date TEXT,
+    days_of_week TEXT DEFAULT '[0,1,2,3,4,5,6]',
+    priority INTEGER DEFAULT 5,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (theme_id) REFERENCES themes(id)
+  )
+`);
+
 // Tabel System Events/Logs
 db.exec(`
   CREATE TABLE IF NOT EXISTS system_events (
@@ -114,7 +205,7 @@ const cekJadwal = db.prepare("SELECT count(*) as count FROM jadwal").get() as {
 };
 if (cekJadwal.count === 0) {
   const insert = db.prepare(`
-    INSERT INTO jadwal (tanggal, imsak, subuh, dzuhur, ashar, maghrib, isya) 
+    INSERT INTO jadwal (tanggal, imsak, subuh, dzuhur, ashar, maghrib, isya)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   const jadwalData = [
@@ -193,6 +284,62 @@ if (cekEvents.count === 0) {
     "success",
   );
   console.log("✅ Event sistem awal berhasil dimasukkan!");
+}
+
+// Seeder Announcements
+const cekAnnouncements = db.prepare("SELECT count(*) as count FROM announcements").get() as { count: number };
+if (cekAnnouncements.count === 0) {
+  const insertAnn = db.prepare(`
+    INSERT INTO announcements (title, content, type, is_active)
+    VALUES (?, ?, ?, ?)
+  `);
+  insertAnn.run("Selamat Datang", "Terima kasih telah berkunjung ke Masjid Al-Ikhlas", "info", 1);
+  insertAnn.run("Waktu Sholat", "Harap matikan handphone saat sholat berjamaah berlangsung", "warning", 1);
+  console.log("✅ Data pengumuman default berhasil dimasukkan!");
+}
+
+// Seeder Display Content
+const cekDisplay = db.prepare("SELECT count(*) as count FROM display_content").get() as { count: number };
+if (cekDisplay.count === 0) {
+  const insertContent = db.prepare(`
+    INSERT INTO display_content (content_type, title, content, duration_seconds, is_active)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  insertContent.run("image", "Banner Ramadan", "Selamat Menunaikan Ibadah Puasa", 15, 1);
+  insertContent.run("text", "Hadits Hari Ini", "Kebersihan adalah sebagian dari iman", 10, 1);
+  console.log("✅ Data konten display default berhasil dimasukkan!");
+}
+
+// Seeder Themes
+const cekThemes = db.prepare("SELECT count(*) as count FROM themes").get() as { count: number };
+if (cekThemes.count === 0) {
+  const insertTheme = db.prepare(`
+    INSERT INTO themes (id, name, slug, description, is_builtin, is_active)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  insertTheme.run('emerald-classic', 'Emerald Classic', 'emerald-classic', 'Tema hijau klasik dengan nuansa islami yang elegan', 1, 1);
+  insertTheme.run('sunset-warm', 'Sunset Warm', 'sunset-warm', 'Tema hangat untuk waktu Maghrib', 1, 1);
+  insertTheme.run('night-sky', 'Night Sky', 'night-sky', 'Tema malam dengan nuansa biru gelap', 1, 1);
+  insertTheme.run('minimalist-white', 'Minimalist White', 'minimalist-white', 'Tema minimalis putih bersih', 1, 1);
+  insertTheme.run('ramadan-kareem', 'Ramadan Kareem', 'ramadan-kareem', 'Tema spesial Ramadan', 1, 1);
+
+  console.log("✅ Data tema default berhasil dimasukkan!");
+}
+
+// Seeder Theme Settings
+const cekThemeSettings = db.prepare("SELECT count(*) as count FROM theme_settings").get() as { count: number };
+if (cekThemeSettings.count === 0) {
+  const insertSetting = db.prepare(`
+    INSERT INTO theme_settings (theme_id, primary_color, secondary_color, accent_color, text_color, bg_type, bg_gradient, layout_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  insertSetting.run('emerald-classic', '#1B5E20', '#2E7D32', '#FFD700', '#FFFFFF', 'gradient', 'linear-gradient(135deg, #1B5E20 0%, #0D3B0D 50%, #1B5E20 100%)', 'classic');
+  insertSetting.run('sunset-warm', '#E65100', '#FF8F00', '#FFE082', '#FFFFFF', 'gradient', 'linear-gradient(180deg, #FF6F00 0%, #E65100 50%, #BF360C 100%)', 'classic');
+  insertSetting.run('night-sky', '#1A237E', '#303F9F', '#FFD54F', '#FFFFFF', 'gradient', 'linear-gradient(180deg, #0D1B2A 0%, #1B263B 50%, #415A77 100%)', 'modern');
+
+  console.log("✅ Data pengaturan tema default berhasil dimasukkan!");
 }
 
 // ============================================
@@ -281,6 +428,7 @@ app.put("/api/mosque", async (c) => {
           timezone = ?,
           phone = ?,
           email = ?,
+          theme_id = ?,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `);
@@ -300,6 +448,7 @@ app.put("/api/mosque", async (c) => {
         body.timezone,
         body.phone,
         body.email,
+        body.theme_id || body.themeId || "emerald",
         existing.id,
       );
 
@@ -316,8 +465,8 @@ app.put("/api/mosque", async (c) => {
     } else {
       // Insert new
       const insertStmt = db.prepare(`
-        INSERT INTO mosque_settings (name, type, street, village, district, city, province, postal_code, country, latitude, longitude, timezone, phone, email)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO mosque_settings (name, type, street, village, district, city, province, postal_code, country, latitude, longitude, timezone, phone, email, theme_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       insertStmt.run(
@@ -335,6 +484,7 @@ app.put("/api/mosque", async (c) => {
         body.timezone,
         body.phone,
         body.email,
+        body.theme_id || body.themeId || "emerald",
       );
     }
 
@@ -561,7 +711,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS theme_assets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     local_id TEXT,
-    theme_id INTEGER,
+    theme_id TEXT,
     theme_local_id TEXT,
     asset_type TEXT NOT NULL,
     file_url TEXT NOT NULL,
@@ -624,6 +774,66 @@ app.patch("/api/mosque/theme", async (c) => {
 });
 
 // ============================================
+// 11.1 Routes - Themes
+// ============================================
+
+// Get all themes
+app.get("/api/themes", (c) => {
+  try {
+    const stmt = db.prepare("SELECT * FROM themes ORDER BY created_at ASC");
+    return c.json(stmt.all());
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch themes" }, 500);
+  }
+});
+
+// Get theme settings
+app.get("/api/theme-settings", (c) => {
+  try {
+    const themeId = c.req.query("themeId");
+    let query = "SELECT * FROM theme_settings";
+    const params: any[] = [];
+
+    if (themeId) {
+      query += " WHERE theme_id = ?";
+      params.push(themeId);
+    }
+
+    const stmt = db.prepare(query);
+    return c.json(stmt.all(...params));
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch theme settings" }, 500);
+  }
+});
+
+// Get theme schedules
+app.get("/api/theme-schedules", (c) => {
+  try {
+    const themeId = c.req.query("themeId");
+    const activeOnly = c.req.query("activeOnly");
+
+    let query = "SELECT * FROM theme_schedules WHERE 1=1";
+    const params: any[] = [];
+
+    if (themeId) {
+      query += " AND theme_id = ?";
+      params.push(themeId);
+    }
+    if (activeOnly === "true") {
+      query += " AND is_active = 1";
+    }
+
+    query += " ORDER BY priority DESC";
+
+    const stmt = db.prepare(query);
+    return c.json(stmt.all(...params));
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch theme schedules" }, 500);
+  }
+});
+
+// ============================================
+
 // 12. Routes - Theme Assets
 // ============================================
 
@@ -852,10 +1062,10 @@ app.get("/api/upload", (c) => {
     }
 
     const stmt = db.prepare(query);
-    const assets = stmt.all(...params);
+    const assets = stmt.all(...params) as any[];
 
     return c.json({
-      files: assets.map((asset: Record<string, unknown>) => ({
+      files: assets.map((asset) => ({
         key: (asset.file_url as string).split("/").pop(),
         url: asset.file_url,
         size: asset.file_size,

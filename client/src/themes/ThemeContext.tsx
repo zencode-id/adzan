@@ -15,6 +15,7 @@ import { mosqueApi } from "../lib/api";
 import { calculatePrayerTimes } from "../lib/prayerTimes";
 import {
   builtinThemes,
+  getThemeById,
   type ThemeConfig,
   type ThemeScheduleConfig,
 } from "../themes";
@@ -123,9 +124,7 @@ export function AutoThemeProvider({
 
   // Get current theme object
   const currentTheme = useMemo(() => {
-    return (
-      builtinThemes.find((t) => t.id === currentThemeId) || builtinThemes[0]
-    );
+    return getThemeById(currentThemeId);
   }, [currentThemeId]);
 
   // Set theme with transition

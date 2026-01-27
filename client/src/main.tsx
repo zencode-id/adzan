@@ -27,7 +27,7 @@ export function Router() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AutoThemeProvider defaultThemeId="emerald">
+    <AutoThemeProvider defaultThemeId="emerald-classic">
       <Router />
     </AutoThemeProvider>
   </StrictMode>,

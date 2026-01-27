@@ -7,8 +7,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:create": "wrangler d1 create mosque-db",
-    "db:migrate": "wrangler d1 execute mosque-db --local --file=./migrations/0001_init.sql",
-    "db:migrate:prod": "wrangler d1 execute mosque-db --file=./migrations/0001_init.sql"
+    "db:migrate": "wrangler d1 migrations apply mosque-db --local",
+    "db:migrate:prod": "wrangler d1 migrations apply mosque-db"
   },
   "dependencies": {
     "drizzle-orm": "^0.38.0",

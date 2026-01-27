@@ -51,6 +51,10 @@ app.get("/", (c) =>
       "/api/prayer-settings",
       "/api/system-events",
       "/api/sync",
+      "/api/themes",
+      "/api/theme-settings",
+      "/api/theme-schedules",
+      "/api/theme-assets",
     ],
   }),
 );
@@ -113,7 +117,7 @@ const upsertMosqueSettings = async (c: any) => {
       body.timezone,
       body.phone,
       body.email,
-      body.theme_id || body.themeId || "emerald",
+      body.theme_id || body.themeId || "emerald-classic",
     ];
 
     if (existing) {
@@ -678,6 +682,68 @@ app.delete("/api/theme-assets/:id", async (c) => {
 });
 
 // ============================================
+// Routes - Themes
+// ============================================
+
+// Get all themes
+app.get("/api/themes", async (c) => {
+  try {
+    const result = await c.env.DB.prepare(
+      "SELECT * FROM themes ORDER BY created_at ASC",
+    ).all();
+    return c.json(result.results);
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch themes" }, 500);
+  }
+});
+
+// Get theme settings
+app.get("/api/theme-settings", async (c) => {
+  try {
+    const themeId = c.req.query("themeId");
+    let query = "SELECT * FROM theme_settings";
+    const params: any[] = [];
+
+    if (themeId) {
+      query += " WHERE theme_id = ?";
+      params.push(themeId);
+    }
+
+    const result = await c.env.DB.prepare(query).bind(...params).all();
+    return c.json(result.results);
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch theme settings" }, 500);
+  }
+});
+
+// Get theme schedules
+app.get("/api/theme-schedules", async (c) => {
+  try {
+    const themeId = c.req.query("themeId");
+    const activeOnly = c.req.query("activeOnly");
+
+    let query = "SELECT * FROM theme_schedules WHERE 1=1";
+    const params: any[] = [];
+
+    if (themeId) {
+      query += " AND theme_id = ?";
+      params.push(themeId);
+    }
+    if (activeOnly === "true") {
+      query += " AND is_active = 1";
+    }
+
+    query += " ORDER BY priority DESC";
+
+    const result = await c.env.DB.prepare(query).bind(...params).all();
+    return c.json(result.results);
+  } catch (error) {
+    return c.json({ success: false, error: "Failed to fetch theme schedules" }, 500);
+  }
+});
+
+// ============================================
+
 // Routes - File Upload (Placeholder for workers)
 // ============================================
 

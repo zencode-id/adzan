@@ -34,7 +34,7 @@ export const mosqueSettings = sqliteTable("mosque_settings", {
   timezone: text("timezone").default("Asia/Jakarta (WIB - UTC+7)"),
   phone: text("phone"),
   email: text("email"),
-  defaultThemeId: integer("default_theme_id"),
+  defaultThemeId: text("default_theme_id"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -100,7 +100,7 @@ export const systemEvents = sqliteTable("system_events", {
 // Themes Table (Master list of themes)
 // ============================================
 export const themes = sqliteTable("themes", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+  id: text("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   description: text("description"),
@@ -116,7 +116,7 @@ export const themes = sqliteTable("themes", {
 // ============================================
 export const themeSettings = sqliteTable("theme_settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  themeId: integer("theme_id").notNull(),
+  themeId: text("theme_id").notNull(),
 
   // Colors
   primaryColor: text("primary_color").default("#1B5E20"),
@@ -180,7 +180,7 @@ export const themeSettings = sqliteTable("theme_settings", {
 // ============================================
 export const themeSchedules = sqliteTable("theme_schedules", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  themeId: integer("theme_id").notNull(),
+  themeId: text("theme_id").notNull(),
   name: text("name"),
 
   // Schedule type
@@ -214,7 +214,7 @@ export const themeSchedules = sqliteTable("theme_schedules", {
 // ============================================
 export const themeAssets = sqliteTable("theme_assets", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  themeId: integer("theme_id").notNull(),
+  themeId: text("theme_id").notNull(),
 
   assetType: text("asset_type").notNull(),
   fileUrl: text("file_url").notNull(),

@@ -150,7 +150,7 @@ export const transformMosqueData = (data: MosqueInfoRaw): MosqueInfo => {
     timezone: data.timezone || "Asia/Jakarta (WIB - UTC+7)",
     phone: data.phone || "",
     email: data.email || "",
-    themeId: data.theme_id || "emerald",
+    themeId: data.theme_id || "emerald-classic",
   };
 };
 

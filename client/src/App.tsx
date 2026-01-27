@@ -98,7 +98,7 @@ function App() {
   // Mosque and Theme State
   const { setTheme, setDefaultTheme } = useAutoTheme();
   const [mosqueInfo, setMosqueInfo] = useState<MosqueInfo | null>(null);
-  const [selectedThemeId, setSelectedThemeId] = useState("emerald");
+  const [selectedThemeId, setSelectedThemeId] = useState("emerald-classic");
   const [isSavingTheme, setIsSavingTheme] = useState(false);
 
   // Fetch mosque info on mount
@@ -108,9 +108,9 @@ function App() {
         const info = await mosqueApi.get();
         if (info) {
           setMosqueInfo(info);
-          setSelectedThemeId(info.themeId || "emerald");
-          setDefaultTheme(info.themeId || "emerald");
-          setTheme(info.themeId || "emerald");
+          setSelectedThemeId(info.themeId || "emerald-classic");
+          setDefaultTheme(info.themeId || "emerald-classic");
+          setTheme(info.themeId || "emerald-classic");
         }
       } catch (error) {
         console.error("Failed to fetch mosque info:", error);
