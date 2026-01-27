@@ -2,6 +2,9 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import Database from "better-sqlite3";
+import { config } from "dotenv";
+
+config();
 
 const app = new Hono();
 const db = new Database("ramadan.db");
@@ -448,9 +451,12 @@ app.put("/api/mosque", async (c) => {
         body.timezone,
         body.phone,
         body.email,
-        body.theme_id || body.themeId || "emerald",
+        body.theme_id || body.themeId || "emerald-classic",
         existing.id,
       );
+
+      // Push to Remote
+      pushToRemote("/api/mosque", "PUT", body);
 
       // Log event
       const logEvent = db.prepare(`
@@ -484,8 +490,11 @@ app.put("/api/mosque", async (c) => {
         body.timezone,
         body.phone,
         body.email,
-        body.theme_id || body.themeId || "emerald",
+        body.theme_id || body.themeId || "emerald-classic",
       );
+
+      // Push to Remote
+      pushToRemote("/api/mosque", "POST", body);
     }
 
     const updated = db.prepare("SELECT * FROM mosque_settings LIMIT 1").get();
@@ -523,6 +532,10 @@ app.post("/api/announcements", async (c) => {
     body.start_date,
     body.end_date,
   );
+
+  // Push to Remote
+  pushToRemote("/api/announcements", "POST", body);
+
   return c.json({ success: true, id: result.lastInsertRowid });
 });
 
@@ -576,6 +589,10 @@ app.post("/api/display-content", async (c) => {
     body.duration_seconds || 10,
     body.is_active ?? 1,
   );
+
+  // Push to Remote
+  pushToRemote("/api/display-content", "POST", body);
+
   return c.json({ success: true, id: result.lastInsertRowid });
 });
 
@@ -1142,6 +1159,92 @@ app.get("/uploads/*", async (c) => {
     return c.json({ error: "Failed to serve file" }, 500);
   }
 });
+
+// ============================================
+// 13. Sinkronisasi dengan Remote (Cloudflare)
+// ============================================
+const REMOTE_API_URL = process.env.REMOTE_API_URL || "https://mosque-display-api.adzan.workers.dev";
+
+async function pullFromRemote() {
+  console.log("🔄 Memulai sinkronisasi dari remote...");
+  try {
+    const response = await fetch(`${REMOTE_API_URL}/api/sync/pull`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const result = await response.json() as any;
+    if (!result.success || !result.data) return;
+
+    const { mosqueSettings, prayerSettings, announcements, displayContent } = result.data;
+
+    // 1. Sync Mosque Settings
+    if (mosqueSettings) {
+      const existing = db.prepare("SELECT id FROM mosque_settings LIMIT 1").get() as any;
+      if (existing) {
+        db.prepare(`
+          UPDATE mosque_settings SET
+            name = ?, type = ?, street = ?, village = ?, district = ?, city = ?, province = ?,
+            postal_code = ?, country = ?, latitude = ?, longitude = ?, timezone = ?, phone = ?, email = ?,
+            theme_id = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(
+          mosqueSettings.name, mosqueSettings.type, mosqueSettings.street, mosqueSettings.village,
+          mosqueSettings.district, mosqueSettings.city, mosqueSettings.province, mosqueSettings.postal_code,
+          mosqueSettings.country, mosqueSettings.latitude, mosqueSettings.longitude, mosqueSettings.timezone,
+          mosqueSettings.phone, mosqueSettings.email, mosqueSettings.theme_id, existing.id
+        );
+      }
+    }
+
+    // 2. Sync Announcements (Refresh all for simplicity)
+    if (Array.isArray(announcements)) {
+      db.prepare("DELETE FROM announcements").run();
+      const insertAnn = db.prepare(`
+        INSERT INTO announcements (title, content, type, is_active, start_date, end_date)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      for (const ann of announcements) {
+        insertAnn.run(ann.title, ann.content, ann.type, ann.is_active, ann.start_date, ann.end_date);
+      }
+    }
+
+    // 3. Sync Display Content
+    if (Array.isArray(displayContent)) {
+      db.prepare("DELETE FROM display_content").run();
+      const insertDisp = db.prepare(`
+        INSERT INTO display_content (content_type, title, content, media_url, display_order, duration_seconds, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const disp of displayContent) {
+        insertDisp.run(disp.content_type, disp.title, disp.content, disp.media_url, disp.display_order, disp.duration_seconds, disp.is_active);
+      }
+    }
+
+    console.log("✅ Sinkronisasi remote berhasil!");
+  } catch (error: any) {
+    console.warn("⚠️ Sinkronisasi remote gagal (Mungkin offline):", error.message);
+  }
+}
+
+async function pushToRemote(endpoint: string, method: string, data: any) {
+  try {
+    const response = await fetch(`${REMOTE_API_URL}${endpoint}`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (response.ok) {
+      console.log(`🚀 Data berhasil di-push ke remote: ${endpoint}`);
+    } else {
+      console.warn(`⚠️ Gagal push ke remote: ${endpoint} (Status: ${response.status})`);
+    }
+  } catch (error: any) {
+    console.warn(`⚠️ Cloudflare sedang tidak bisa dijangkau, data tersimpan di Lokal saja.`);
+  }
+}
+
+// Jalankan sinkronisasi pertama kali dan setiap 5 menit
+pullFromRemote();
+setInterval(pullFromRemote, 5 * 60 * 1000);
 
 // ============================================
 // 14. Start Server
