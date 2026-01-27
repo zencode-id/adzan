@@ -27,7 +27,7 @@ app.use(
 );
 
 app.options("/*", (c) => {
-  return c.text("", 204 as 204, {
+  return c.text("", 204, {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
