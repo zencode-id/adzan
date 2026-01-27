@@ -1,9 +1,13 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://mosque-display-api.adzan.workers.dev/").replace(/\/$/, "") + "/api";
+const API_BASE_URL =
+  (
+    import.meta.env.VITE_API_URL ||
+    "https://mosque-display-api.adzan.workers.dev/"
+  ).replace(/\/$/, "") + "/api";
 
 console.table({
   "Config Mode": import.meta.env.MODE,
-  "VITE_API_URL": import.meta.env.VITE_API_URL || "Using Default",
-  "Final API URL": API_BASE_URL
+  VITE_API_URL: import.meta.env.VITE_API_URL || "Using Default",
+  "Final API URL": API_BASE_URL,
 });
 
 // Types
@@ -181,6 +185,19 @@ export const mosqueApi = {
       };
     } catch (error) {
       console.error("Failed to update mosque settings:", error);
+      return { success: false };
+    }
+  },
+
+  async updateTheme(themeId: string): Promise<{ success: boolean }> {
+    try {
+      const response = await apiCall<{ success: boolean }>("/mosque/theme", {
+        method: "PATCH",
+        body: JSON.stringify({ themeId }),
+      });
+      return response;
+    } catch (error) {
+      console.error("Failed to update mosque theme:", error);
       return { success: false };
     }
   },

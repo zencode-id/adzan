@@ -544,7 +544,397 @@ app.post("/api/system-events", async (c) => {
 });
 
 // ============================================
-// 11. Start Server
+// 11. Routes - Theme Settings
+// ============================================
+
+// Add theme_id column to mosque_settings if not exists
+try {
+  db.exec(
+    `ALTER TABLE mosque_settings ADD COLUMN theme_id TEXT DEFAULT 'emerald'`,
+  );
+} catch {
+  // Column already exists
+}
+
+// Create theme_assets table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS theme_assets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    local_id TEXT,
+    theme_id INTEGER,
+    theme_local_id TEXT,
+    asset_type TEXT NOT NULL,
+    file_url TEXT NOT NULL,
+    file_name TEXT,
+    file_size INTEGER,
+    mime_type TEXT,
+    position TEXT DEFAULT 'center',
+    position_x TEXT,
+    position_y TEXT,
+    width TEXT,
+    height TEXT,
+    z_index INTEGER DEFAULT 0,
+    opacity REAL DEFAULT 1,
+    animation TEXT DEFAULT 'none',
+    is_active INTEGER DEFAULT 1,
+    display_order INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// Update mosque theme
+app.patch("/api/mosque/theme", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { themeId } = body;
+
+    if (!themeId) {
+      return c.json({ success: false, error: "themeId is required" }, 400);
+    }
+
+    const existing = db
+      .prepare("SELECT id FROM mosque_settings LIMIT 1")
+      .get() as { id: number } | undefined;
+
+    if (existing) {
+      db.prepare(
+        `
+        UPDATE mosque_settings SET theme_id = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+      ).run(themeId, existing.id);
+
+      // Log event
+      db.prepare(
+        `
+        INSERT INTO system_events (title, description, event_type)
+        VALUES (?, ?, ?)
+      `,
+      ).run("Theme updated", `Display theme changed to ${themeId}`, "info");
+
+      return c.json({ success: true });
+    }
+
+    return c.json({ success: false, error: "Mosque settings not found" }, 404);
+  } catch (error) {
+    console.error("Error updating theme:", error);
+    return c.json({ success: false, error: "Failed to update theme" }, 500);
+  }
+});
+
+// ============================================
+// 12. Routes - Theme Assets
+// ============================================
+
+// Get all theme assets
+app.get("/api/theme-assets", (c) => {
+  const themeId = c.req.query("themeId");
+  const assetType = c.req.query("assetType");
+
+  let query = "SELECT * FROM theme_assets WHERE 1=1";
+  const params: string[] = [];
+
+  if (themeId) {
+    query += " AND (theme_id = ? OR theme_local_id = ?)";
+    params.push(themeId, themeId);
+  }
+  if (assetType) {
+    query += " AND asset_type = ?";
+    params.push(assetType);
+  }
+
+  query += " ORDER BY display_order ASC";
+
+  const stmt = db.prepare(query);
+  return c.json(stmt.all(...params));
+});
+
+// Create theme asset
+app.post("/api/theme-assets", async (c) => {
+  try {
+    const body = await c.req.json();
+    const stmt = db.prepare(`
+      INSERT INTO theme_assets (
+        local_id, theme_id, theme_local_id, asset_type, file_url, file_name,
+        file_size, mime_type, position, position_x, position_y, width, height,
+        z_index, opacity, animation, is_active, display_order
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+      body.localId || crypto.randomUUID(),
+      body.themeId,
+      body.themeLocalId,
+      body.assetType,
+      body.fileUrl,
+      body.fileName,
+      body.fileSize,
+      body.mimeType,
+      body.position || "center",
+      body.positionX,
+      body.positionY,
+      body.width,
+      body.height,
+      body.zIndex || 0,
+      body.opacity ?? 1,
+      body.animation || "none",
+      body.isActive ?? 1,
+      body.displayOrder || 0,
+    );
+
+    return c.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    console.error("Error creating theme asset:", error);
+    return c.json(
+      { success: false, error: "Failed to create theme asset" },
+      500,
+    );
+  }
+});
+
+// Update theme asset
+app.put("/api/theme-assets/:id", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json();
+
+  const stmt = db.prepare(`
+    UPDATE theme_assets SET
+      position = ?, position_x = ?, position_y = ?, width = ?, height = ?,
+      z_index = ?, opacity = ?, animation = ?, is_active = ?, display_order = ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `);
+
+  stmt.run(
+    body.position,
+    body.positionX,
+    body.positionY,
+    body.width,
+    body.height,
+    body.zIndex,
+    body.opacity,
+    body.animation,
+    body.isActive,
+    body.displayOrder,
+    id,
+  );
+
+  return c.json({ success: true });
+});
+
+// Delete theme asset
+app.delete("/api/theme-assets/:id", (c) => {
+  const id = c.req.param("id");
+  db.prepare("DELETE FROM theme_assets WHERE id = ?").run(id);
+  return c.json({ success: true });
+});
+
+// ============================================
+// 13. Routes - File Upload (Local Development)
+// ============================================
+import {
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  unlinkSync,
+  readdirSync,
+  statSync,
+} from "fs";
+import { join, extname } from "path";
+import { pipeline } from "stream/promises";
+import { Readable } from "stream";
+
+const UPLOAD_DIR = join(process.cwd(), "uploads", "theme-assets");
+
+// Ensure upload directory exists
+if (!existsSync(UPLOAD_DIR)) {
+  mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+// Upload file
+app.post("/api/upload", async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get("file") as File | null;
+    const key = formData.get("key") as string | null;
+    const assetType = formData.get("assetType") as string | null;
+    const themeId = formData.get("themeId") as string | null;
+    const themeLocalId = formData.get("themeLocalId") as string | null;
+
+    if (!file) {
+      return c.json({ success: false, error: "No file provided" }, 400);
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+      "image/svg+xml",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      return c.json({ success: false, error: "Invalid file type" }, 400);
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      return c.json(
+        { success: false, error: "File too large (max 10MB)" },
+        400,
+      );
+    }
+
+    // Generate unique filename
+    const ext = extname(file.name) || `.${file.type.split("/")[1]}`;
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    const fileName = `${assetType || "asset"}_${timestamp}_${random}${ext}`;
+    const filePath = join(UPLOAD_DIR, fileName);
+
+    // Save file
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const writeStream = createWriteStream(filePath);
+    await pipeline(Readable.from(buffer), writeStream);
+
+    // Generate URL (for local dev, use relative path)
+    const baseUrl = process.env.API_URL || `http://localhost:3000`;
+    const fileUrl = `${baseUrl}/uploads/theme-assets/${fileName}`;
+
+    // Save to database
+    const stmt = db.prepare(`
+      INSERT INTO theme_assets (
+        local_id, theme_id, theme_local_id, asset_type, file_url,
+        file_name, file_size, mime_type, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const localId = crypto.randomUUID();
+    const result = stmt.run(
+      localId,
+      themeId ? parseInt(themeId) : null,
+      themeLocalId,
+      assetType || "background",
+      fileUrl,
+      file.name,
+      file.size,
+      file.type,
+      1,
+    );
+
+    return c.json({
+      success: true,
+      url: fileUrl,
+      key: fileName,
+      id: result.lastInsertRowid,
+      localId,
+    });
+  } catch (error) {
+    console.error("Upload error:", error);
+    return c.json({ success: false, error: "Upload failed" }, 500);
+  }
+});
+
+// List uploaded files
+app.get("/api/upload", (c) => {
+  try {
+    const folder = c.req.query("folder");
+    const assetType = c.req.query("assetType");
+
+    let query = "SELECT * FROM theme_assets WHERE 1=1";
+    const params: string[] = [];
+
+    if (assetType) {
+      query += " AND asset_type = ?";
+      params.push(assetType);
+    }
+
+    const stmt = db.prepare(query);
+    const assets = stmt.all(...params);
+
+    return c.json({
+      files: assets.map((asset: Record<string, unknown>) => ({
+        key: (asset.file_url as string).split("/").pop(),
+        url: asset.file_url,
+        size: asset.file_size,
+        lastModified: asset.created_at,
+      })),
+    });
+  } catch (error) {
+    console.error("List error:", error);
+    return c.json({ files: [] });
+  }
+});
+
+// Delete uploaded file
+app.delete("/api/upload/:key", (c) => {
+  try {
+    const key = decodeURIComponent(c.req.param("key"));
+    const filePath = join(UPLOAD_DIR, key);
+
+    // Delete from filesystem
+    if (existsSync(filePath)) {
+      unlinkSync(filePath);
+    }
+
+    // Delete from database
+    db.prepare("DELETE FROM theme_assets WHERE file_url LIKE ?").run(
+      `%${key}%`,
+    );
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Delete error:", error);
+    return c.json({ success: false, error: "Delete failed" }, 500);
+  }
+});
+
+// Serve uploaded files (static)
+app.get("/uploads/*", async (c) => {
+  try {
+    const path = c.req.path.replace("/uploads/", "");
+    const filePath = join(process.cwd(), "uploads", path);
+
+    if (!existsSync(filePath)) {
+      return c.json({ error: "File not found" }, 404);
+    }
+
+    const ext = extname(filePath).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".webp": "image/webp",
+      ".gif": "image/gif",
+      ".svg": "image/svg+xml",
+    };
+
+    const contentType = mimeTypes[ext] || "application/octet-stream";
+    const stream = createReadStream(filePath);
+
+    // Convert Node.js stream to Response
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+
+    return new Response(buffer, {
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=31536000",
+      },
+    });
+  } catch (error) {
+    console.error("Serve error:", error);
+    return c.json({ error: "Failed to serve file" }, 500);
+  }
+});
+
+// ============================================
+// 14. Start Server
 // ============================================
 const port = 3000;
 console.log(`\n🕌 Mosque Display API`);

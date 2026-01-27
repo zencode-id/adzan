@@ -1,3 +1,4 @@
+import type { Table } from "dexie";
 import {
   localDb,
   getPendingSyncItems,
@@ -5,7 +6,12 @@ import {
   incrementRetryCount,
   getPendingChangesCount,
   mosqueSettingsLocal,
+  themesLocal,
+  themeAssetsLocal,
   type SyncQueueItem,
+  type MosqueDatabase,
+  type LocalTheme,
+  type LocalThemeAsset,
 } from "./localDatabase";
 
 // ============================================
@@ -39,10 +45,48 @@ export interface SyncResult {
   errors: string[];
 }
 
+export interface RemoteThemeData {
+  id: number;
+  local_id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  preview_image_url?: string;
+  is_builtin: number;
+  is_active: number;
+  updated_at: string;
+}
+
+export interface RemoteThemeAssetData {
+  id: number;
+  local_id: string;
+  theme_id: number;
+  theme_local_id: string;
+  asset_type: LocalThemeAsset["assetType"];
+  file_url: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  position: LocalThemeAsset["position"];
+  position_x?: string;
+  position_y?: string;
+  width?: string;
+  height?: string;
+  z_index: number;
+  opacity: number;
+  animation: LocalThemeAsset["animation"];
+  is_active: number;
+  display_order: number;
+  updated_at: string;
+}
+
 // ============================================
 // API Configuration
 // ============================================
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://mosque-display-api.adzan.workers.dev/").replace(/\/$/, "");
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://mosque-display-api.adzan.workers.dev/"
+).replace(/\/$/, "");
 
 // ============================================
 // Sync Service Class
@@ -213,16 +257,21 @@ class SyncService {
 
       case "update": {
         // Find remote ID
-        const localRecord = await (localDb as any)[item.table].where("localId").equals(item.localId).first();
+        const tableRef = localDb[item.table as keyof MosqueDatabase] as Table;
+        const localRecord = await tableRef
+          .where("localId")
+          .equals(item.localId)
+          .first();
         const remoteId = localRecord?.remoteId;
 
         if (!remoteId && item.table !== "mosqueSettings") {
           throw new Error("Cannot update record without remote ID");
         }
 
-        const url = (remoteId && item.table !== "mosqueSettings")
-          ? `${API_BASE_URL}${endpoint}/${remoteId}`
-          : `${API_BASE_URL}${endpoint}`;
+        const url =
+          remoteId && item.table !== "mosqueSettings"
+            ? `${API_BASE_URL}${endpoint}/${remoteId}`
+            : `${API_BASE_URL}${endpoint}`;
 
         const response = await fetch(url, {
           method: "PUT",
@@ -266,6 +315,24 @@ class SyncService {
         }
       }
 
+      // 2. Pull Themes
+      const themesResponse = await fetch(`${API_BASE_URL}/api/themes`);
+      if (themesResponse.ok) {
+        const themesData = await themesResponse.json();
+        if (Array.isArray(themesData)) {
+          await this._mergeRemoteThemes(themesData);
+        }
+      }
+
+      // 3. Pull Theme Assets
+      const assetsResponse = await fetch(`${API_BASE_URL}/api/theme-assets`);
+      if (assetsResponse.ok) {
+        const assetsData = await assetsResponse.json();
+        if (Array.isArray(assetsData)) {
+          await this._mergeRemoteThemeAssets(assetsData);
+        }
+      }
+
       // 2. Pull announcements (could expand to other tables)
       // This is basic sync - for smarter sync, use dedicated /sync/pull endpoint
     } catch (error) {
@@ -273,15 +340,24 @@ class SyncService {
     }
   }
 
-  private async _updateLocalRemoteId(table: string, localId: string, remoteId: number): Promise<void> {
-    const tableInstance = (localDb as any)[table];
+  private async _updateLocalRemoteId(
+    table: string,
+    localId: string,
+    remoteId: number,
+  ): Promise<void> {
+    const tableInstance = localDb[table as keyof MosqueDatabase] as
+      | Table
+      | undefined;
     if (tableInstance) {
-      const record = await tableInstance.where("localId").equals(localId).first();
+      const record = await tableInstance
+        .where("localId")
+        .equals(localId)
+        .first();
       if (record) {
         await tableInstance.update(record.id!, {
           syncStatus: "synced",
           syncedAt: Date.now(),
-          remoteId: remoteId
+          remoteId: remoteId,
         });
       }
     }
@@ -347,6 +423,84 @@ class SyncService {
   }
 
   // ============================================
+  // Merge remote themes
+  // ============================================
+  private async _mergeRemoteThemes(
+    remoteThemes: RemoteThemeData[],
+  ): Promise<void> {
+    for (const remote of remoteThemes) {
+      const local = await themesLocal.get(remote.local_id);
+
+      const themeData: LocalTheme = {
+        localId: remote.local_id,
+        name: remote.name,
+        slug: remote.slug,
+        description: remote.description,
+        previewImageUrl: remote.preview_image_url,
+        isBuiltin: remote.is_builtin === 1,
+        isActive: remote.is_active === 1,
+        syncStatus: "synced",
+        updatedAt: Date.now(),
+        syncedAt: Date.now(),
+        remoteId: remote.id,
+      };
+
+      if (!local || local.syncStatus === "synced") {
+        await themesLocal.upsert(themeData);
+      }
+    }
+  }
+
+  // ============================================
+  // Merge remote theme assets
+  // ============================================
+  private async _mergeRemoteThemeAssets(
+    remoteAssets: RemoteThemeAssetData[],
+  ): Promise<void> {
+    for (const remote of remoteAssets) {
+      const local = await themeAssetsLocal.get(remote.local_id);
+
+      const assetData: LocalThemeAsset = {
+        localId: remote.local_id,
+        themeId: remote.theme_id,
+        themeLocalId: remote.theme_local_id,
+        assetType: remote.asset_type,
+        fileUrl: remote.file_url,
+        fileName: remote.file_name,
+        fileSize: remote.file_size,
+        mimeType: remote.mime_type,
+        position: remote.position,
+        positionX: remote.position_x,
+        positionY: remote.position_y,
+        width: remote.width,
+        height: remote.height,
+        zIndex: remote.z_index,
+        opacity: remote.opacity,
+        animation: remote.animation,
+        isActive: remote.is_active === 1,
+        displayOrder: remote.display_order,
+        syncStatus: "synced",
+        updatedAt: Date.now(),
+        syncedAt: Date.now(),
+        remoteId: remote.id,
+      };
+
+      if (!local || local.syncStatus === "synced") {
+        await themeAssetsLocal.upsert(assetData);
+
+        // Auto-cache the asset for offline use if it's new or updated
+        if (assetData.isActive) {
+          await themeAssetsLocal
+            .getBlobUrl(assetData)
+            .catch((err) =>
+              console.error(`Failed to cache asset ${assetData.localId}:`, err),
+            );
+        }
+      }
+    }
+  }
+
+  // ============================================
   // Start auto sync
   // ============================================
   startAutoSync(intervalMs: number = 60000): void {
@@ -377,8 +531,12 @@ class SyncService {
       announcements: "/api/announcements",
       prayerSettings: "/api/prayer-settings",
       displayContent: "/api/display-content",
+      themeAssets: "/api/theme-assets",
+      themes: "/api/themes",
+      themeSettings: "/api/theme-settings",
+      themeSchedules: "/api/theme-schedules",
     };
-    return endpoints[table] || `/${table}`;
+    return endpoints[table] || `/api/${table}`;
   }
 
   // ============================================

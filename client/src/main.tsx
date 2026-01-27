@@ -2,7 +2,7 @@ import { StrictMode, useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
-import DisplayScreen from "./DisplayScreen.tsx";
+import { ThemedDisplay, AutoThemeProvider } from "./themes";
 
 export function Router() {
   const [currentPath, setCurrentPath] = useState(window.location.hash || "#/");
@@ -18,7 +18,7 @@ export function Router() {
 
   // Route to display screen
   if (currentPath === "#/display") {
-    return <DisplayScreen />;
+    return <ThemedDisplay />;
   }
 
   // Default: Dashboard
@@ -27,6 +27,8 @@ export function Router() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <Router />
+    <AutoThemeProvider defaultThemeId="emerald">
+      <Router />
+    </AutoThemeProvider>
   </StrictMode>,
 );

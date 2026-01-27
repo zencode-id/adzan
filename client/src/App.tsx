@@ -14,6 +14,7 @@ import {
   AdzanControl,
 } from "./components/dashboard";
 import { useAdzan } from "./hooks/useAdzan";
+import { useAutoTheme } from "./themes";
 import { systemEventsApi, mosqueApi, type MosqueInfo } from "./lib/api";
 
 // Page header configurations
@@ -95,6 +96,7 @@ function App() {
   const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([]);
 
   // Mosque and Theme State
+  const { setTheme, setDefaultTheme } = useAutoTheme();
   const [mosqueInfo, setMosqueInfo] = useState<MosqueInfo | null>(null);
   const [selectedThemeId, setSelectedThemeId] = useState("emerald");
   const [isSavingTheme, setIsSavingTheme] = useState(false);
@@ -107,13 +109,15 @@ function App() {
         if (info) {
           setMosqueInfo(info);
           setSelectedThemeId(info.themeId || "emerald");
+          setDefaultTheme(info.themeId || "emerald");
+          setTheme(info.themeId || "emerald");
         }
       } catch (error) {
         console.error("Failed to fetch mosque info:", error);
       }
     };
     fetchMosqueInfo();
-  }, []);
+  }, [setTheme, setDefaultTheme]);
 
   const handleThemeSave = async () => {
     if (!mosqueInfo) return;
