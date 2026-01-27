@@ -171,6 +171,54 @@ const upsertMosqueSettings = async (c: any) => {
 app.put("/api/mosque", upsertMosqueSettings);
 app.post("/api/mosque", upsertMosqueSettings);
 
+// Update mosque theme
+app.patch("/api/mosque/theme", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { themeId } = body;
+
+    if (!themeId) {
+      return c.json({ success: false, error: "themeId is required" }, 400);
+    }
+
+    const existing = (await c.env.DB.prepare(
+      "SELECT id FROM mosque_settings LIMIT 1",
+    ).first()) as { id: number } | null;
+
+    if (existing) {
+      await c.env.DB.prepare(
+        `
+        UPDATE mosque_settings SET theme_id = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+      )
+        .bind(themeId, existing.id)
+        .run();
+
+      // Log event
+      await c.env.DB.prepare(
+        "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)",
+      )
+        .bind("Theme updated", `Display theme changed to ${themeId}`, "info")
+        .run();
+
+      return c.json({ success: true });
+    }
+
+    return c.json({ success: false, error: "Mosque settings not found" }, 404);
+  } catch (error: any) {
+    console.error("Error updating theme:", error);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to update theme",
+        message: error.message,
+      },
+      500,
+    );
+  }
+});
+
 // ============================================
 // Routes - Announcements
 // ============================================
@@ -492,6 +540,163 @@ app.post("/api/system-events", async (c) => {
     .run();
 
   return c.json({ success: true, id: result.meta.last_row_id });
+});
+
+// ============================================
+// Routes - Theme Assets
+// ============================================
+
+// Get all theme assets
+app.get("/api/theme-assets", async (c) => {
+  try {
+    const themeId = c.req.query("themeId");
+    const assetType = c.req.query("assetType");
+
+    let query = "SELECT * FROM theme_assets WHERE 1=1";
+    const params: any[] = [];
+
+    if (themeId) {
+      query += " AND (theme_id = ? OR theme_local_id = ?)";
+      params.push(themeId, themeId);
+    }
+    if (assetType) {
+      query += " AND asset_type = ?";
+      params.push(assetType);
+    }
+
+    query += " ORDER BY display_order ASC";
+
+    const result = await c.env.DB.prepare(query)
+      .bind(...params)
+      .all();
+    return c.json(result.results);
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to fetch theme assets" },
+      500,
+    );
+  }
+});
+
+// Create theme asset
+app.post("/api/theme-assets", async (c) => {
+  try {
+    const body = await c.req.json();
+    const result = await c.env.DB.prepare(
+      `
+      INSERT INTO theme_assets (
+        theme_id, theme_local_id, asset_type, file_url, file_name,
+        file_size, mime_type, position, position_x, position_y, width, height,
+        z_index, opacity, animation, is_active, display_order
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    )
+      .bind(
+        body.themeId || body.theme_id,
+        body.themeLocalId || body.theme_local_id,
+        body.assetType || body.asset_type,
+        body.fileUrl || body.file_url,
+        body.fileName || body.file_name,
+        body.fileSize || body.file_size,
+        body.mimeType || body.mime_type,
+        body.position || "center",
+        body.positionX || body.position_x,
+        body.positionY || body.position_y,
+        body.width,
+        body.height,
+        body.zIndex || body.z_index || 0,
+        body.opacity ?? 1,
+        body.animation || "none",
+        body.isActive ?? body.is_active ?? 1,
+        body.displayOrder || body.display_order || 0,
+      )
+      .run();
+
+    return c.json({ success: true, id: result.meta.last_row_id });
+  } catch (error: any) {
+    console.error("Error creating theme asset:", error);
+    return c.json(
+      { success: false, error: "Failed to create theme asset" },
+      500,
+    );
+  }
+});
+
+// Update theme asset
+app.put("/api/theme-assets/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+
+    await c.env.DB.prepare(
+      `
+      UPDATE theme_assets SET
+        position = ?, position_x = ?, position_y = ?, width = ?, height = ?,
+        z_index = ?, opacity = ?, animation = ?, is_active = ?, display_order = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `,
+    )
+      .bind(
+        body.position,
+        body.positionX || body.position_x,
+        body.positionY || body.position_y,
+        body.width,
+        body.height,
+        body.zIndex || body.z_index,
+        body.opacity,
+        body.animation,
+        body.isActive ?? body.is_active,
+        body.displayOrder || body.display_order,
+        id,
+      )
+      .run();
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to update theme asset" },
+      500,
+    );
+  }
+});
+
+// Delete theme asset
+app.delete("/api/theme-assets/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+    await c.env.DB.prepare("DELETE FROM theme_assets WHERE id = ?")
+      .bind(id)
+      .run();
+    return c.json({ success: true });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to delete theme asset" },
+      500,
+    );
+  }
+});
+
+// ============================================
+// Routes - File Upload (Placeholder for workers)
+// ============================================
+
+// Upload file
+app.post("/api/upload", async (c) => {
+  // Cloudflare Workers requires R2 or another external storage for file uploads
+  // If R2 is not configured, we return an error or handle accordingly
+  return c.json(
+    {
+      success: false,
+      error: "R2 Storage not configured on worker. Please setup Cloudflare R2.",
+    },
+    501,
+  );
+});
+
+// List uploaded files
+app.get("/api/upload", async (c) => {
+  return c.json({ files: [] });
 });
 
 // ============================================
