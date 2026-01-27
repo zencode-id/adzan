@@ -14,7 +14,26 @@ const app = new Hono<{ Bindings: Bindings }>();
 // ============================================
 // Middleware
 // ============================================
-app.use("/*", cors());
+app.use(
+  "/*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    exposeHeaders: ["Content-Length"],
+    maxAge: 600,
+    credentials: true,
+  }),
+);
+
+app.options("/*", (c) => {
+  return c.text("", 204 as 204, {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Max-Age": "86400",
+  });
+});
 
 // ============================================
 // Routes - Home
@@ -111,8 +130,10 @@ const upsertMosqueSettings = async (c: any) => {
         .run();
 
       await c.env.DB.prepare(
-        "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
-      ).bind("Mosque updated", `${body.name} settings updated`, "info").run();
+        "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)",
+      )
+        .bind("Mosque updated", `${body.name} settings updated`, "info")
+        .run();
     } else {
       await c.env.DB.prepare(
         `
@@ -124,15 +145,26 @@ const upsertMosqueSettings = async (c: any) => {
         .run();
 
       await c.env.DB.prepare(
-        "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
-      ).bind("Mosque initialized", `${body.name} settings created`, "success").run();
+        "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)",
+      )
+        .bind("Mosque initialized", `${body.name} settings created`, "success")
+        .run();
     }
 
-    const updated = await c.env.DB.prepare("SELECT * FROM mosque_settings LIMIT 1").first();
+    const updated = await c.env.DB.prepare(
+      "SELECT * FROM mosque_settings LIMIT 1",
+    ).first();
     return c.json({ success: true, data: updated });
   } catch (error: any) {
     console.error("Error upserting mosque settings:", error);
-    return c.json({ success: false, error: "Failed to save mosque settings", message: error.message }, 500);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to save mosque settings",
+        message: error.message,
+      },
+      500,
+    );
   }
 };
 
@@ -149,7 +181,10 @@ app.get("/api/announcements", async (c) => {
     ).all();
     return c.json(result.results);
   } catch (error) {
-    return c.json({ success: false, error: "Failed to fetch announcements" }, 500);
+    return c.json(
+      { success: false, error: "Failed to fetch announcements" },
+      500,
+    );
   }
 });
 
@@ -174,13 +209,18 @@ app.post("/api/announcements", async (c) => {
 
     // Log event
     await c.env.DB.prepare(
-      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
-    ).bind("Announcement created", `New announcement: ${body.title}`, "info").run();
+      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)",
+    )
+      .bind("Announcement created", `New announcement: ${body.title}`, "info")
+      .run();
 
     return c.json({ success: true, id: result.meta.last_row_id });
   } catch (error) {
     console.error("Error creating announcement:", error);
-    return c.json({ success: false, error: "Failed to create announcement" }, 500);
+    return c.json(
+      { success: false, error: "Failed to create announcement" },
+      500,
+    );
   }
 });
 
@@ -208,12 +248,17 @@ app.put("/api/announcements/:id", async (c) => {
 
     // Log event
     await c.env.DB.prepare(
-      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
-    ).bind("Announcement updated", `Updated: ${body.title}`, "info").run();
+      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)",
+    )
+      .bind("Announcement updated", `Updated: ${body.title}`, "info")
+      .run();
 
     return c.json({ success: true });
   } catch (error) {
-    return c.json({ success: false, error: "Failed to update announcement" }, 500);
+    return c.json(
+      { success: false, error: "Failed to update announcement" },
+      500,
+    );
   }
 });
 
@@ -226,12 +271,17 @@ app.delete("/api/announcements/:id", async (c) => {
 
     // Log event
     await c.env.DB.prepare(
-      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
-    ).bind("Announcement deleted", `ID: ${id}`, "warning").run();
+      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)",
+    )
+      .bind("Announcement deleted", `ID: ${id}`, "warning")
+      .run();
 
     return c.json({ success: true });
   } catch (error) {
-    return c.json({ success: false, error: "Failed to delete announcement" }, 500);
+    return c.json(
+      { success: false, error: "Failed to delete announcement" },
+      500,
+    );
   }
 });
 
@@ -245,7 +295,10 @@ app.get("/api/display-content", async (c) => {
     ).all();
     return c.json(result.results);
   } catch (error) {
-    return c.json({ success: false, error: "Failed to fetch display content" }, 500);
+    return c.json(
+      { success: false, error: "Failed to fetch display content" },
+      500,
+    );
   }
 });
 
@@ -271,12 +324,17 @@ app.post("/api/display-content", async (c) => {
 
     // Log event
     await c.env.DB.prepare(
-      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)"
-    ).bind("Display content added", `${body.title || "Untitled"}`, "info").run();
+      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)",
+    )
+      .bind("Display content added", `${body.title || "Untitled"}`, "info")
+      .run();
 
     return c.json({ success: true, id: result.meta.last_row_id });
   } catch (error) {
-    return c.json({ success: false, error: "Failed to create display content" }, 500);
+    return c.json(
+      { success: false, error: "Failed to create display content" },
+      500,
+    );
   }
 });
 
@@ -305,7 +363,10 @@ app.put("/api/display-content/:id", async (c) => {
 
     return c.json({ success: true });
   } catch (error) {
-    return c.json({ success: false, error: "Failed to update display content" }, 500);
+    return c.json(
+      { success: false, error: "Failed to update display content" },
+      500,
+    );
   }
 });
 
@@ -317,7 +378,10 @@ app.delete("/api/display-content/:id", async (c) => {
       .run();
     return c.json({ success: true });
   } catch (error) {
-    return c.json({ success: false, error: "Failed to delete display content" }, 500);
+    return c.json(
+      { success: false, error: "Failed to delete display content" },
+      500,
+    );
   }
 });
 
@@ -331,7 +395,10 @@ app.get("/api/prayer-settings", async (c) => {
     ).first();
     return c.json(result || null);
   } catch (error) {
-    return c.json({ success: false, error: "Failed to fetch prayer settings" }, 500);
+    return c.json(
+      { success: false, error: "Failed to fetch prayer settings" },
+      500,
+    );
   }
 });
 
@@ -381,10 +448,19 @@ const upsertPrayerSettings = async (c: any) => {
         .run();
     }
 
-    const updated = await c.env.DB.prepare("SELECT * FROM prayer_settings LIMIT 1").first();
+    const updated = await c.env.DB.prepare(
+      "SELECT * FROM prayer_settings LIMIT 1",
+    ).first();
     return c.json({ success: true, data: updated });
   } catch (error: any) {
-    return c.json({ success: false, error: "Failed to save prayer settings", message: error.message }, 500);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to save prayer settings",
+        message: error.message,
+      },
+      500,
+    );
   }
 };
 
@@ -463,7 +539,7 @@ app.get("/api/sync/pull", async (c) => {
         mosqueSettings: mosque,
         prayerSettings: prayerSettings,
         announcements: announcements.results,
-        displayContent: displayContent.results
+        displayContent: displayContent.results,
       },
       serverTime: new Date().toISOString(),
     });
@@ -474,11 +550,13 @@ app.get("/api/sync/pull", async (c) => {
 
 app.get("/api/sync/status", async (c) => {
   try {
-    const count = await c.env.DB.prepare("SELECT COUNT(*) as count FROM system_events").first();
+    const count = await c.env.DB.prepare(
+      "SELECT COUNT(*) as count FROM system_events",
+    ).first();
     return c.json({
       serverTime: new Date().toISOString(),
       status: "ready",
-      databaseOk: !!count
+      databaseOk: !!count,
     });
   } catch (error) {
     return c.json({ status: "error", error: "Database unreachable" }, 500);
