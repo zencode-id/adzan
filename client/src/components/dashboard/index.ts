@@ -8,3 +8,5 @@ export { SystemEvents } from "./SystemEvents";
 export { LocationSettings } from "./LocationSettings";
 export { QuickStats } from "./QuickStats";
 export { ThemeSelector } from "./ThemeSelector";
+export { HijriCalendar } from "./HijriCalendar";
+export { AdzanControl } from "./AdzanControl";

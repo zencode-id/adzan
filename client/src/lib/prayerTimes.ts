@@ -155,11 +155,17 @@ export function getNextPrayer(
 
   const prayerNames: Record<string, string> = {
     Fajr: "Subuh",
+    fajr: "Subuh",
     Sunrise: "Terbit",
+    sunrise: "Terbit",
     Dhuhr: "Dzuhur",
+    dhuhr: "Dzuhur",
     Asr: "Ashar",
+    asr: "Ashar",
     Maghrib: "Maghrib",
+    maghrib: "Maghrib",
     Isha: "Isya",
+    isha: "Isya",
   };
 
   // nextPrayer is a Prayer enum value, use it directly
@@ -213,12 +219,19 @@ export function getCurrentPrayer(
 
   const prayerNames: Record<string, string> = {
     None: "Sebelum Subuh",
+    none: "Sebelum Subuh",
     Fajr: "Subuh",
+    fajr: "Subuh",
     Sunrise: "Terbit",
+    sunrise: "Terbit",
     Dhuhr: "Dzuhur",
+    dhuhr: "Dzuhur",
     Asr: "Ashar",
+    asr: "Ashar",
     Maghrib: "Maghrib",
+    maghrib: "Maghrib",
     Isha: "Isya",
+    isha: "Isya",
   };
 
   // currentPrayer is a Prayer enum value, use it directly

@@ -129,3 +129,30 @@ body {
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+/* Prayer Time Active Blinking Animation */
+@keyframes prayer-blink {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02);
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.8);
+  }
+}
+
+.animate-prayer-active {
+  animation: prayer-blink 1.5s ease-in-out infinite;
+}
+
+/* Glow effect for active prayer */
+.prayer-glow {
+  box-shadow:
+    0 0 30px rgba(212, 175, 55, 0.6),
+    0 0 60px rgba(212, 175, 55, 0.3),
+    inset 0 0 20px rgba(212, 175, 55, 0.1);
+}

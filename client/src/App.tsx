@@ -10,7 +10,10 @@ import {
   LocationSettings,
   QuickStats,
   ThemeSelector,
+  HijriCalendar,
+  AdzanControl,
 } from "./components/dashboard";
+import { useAdzan } from "./hooks/useAdzan";
 import { systemEventsApi, mosqueApi, type MosqueInfo } from "./lib/api";
 
 // Page header configurations
@@ -49,6 +52,40 @@ interface SystemEvent {
   description: string;
   timestamp: string;
   type: "success" | "info" | "warning" | "error";
+}
+
+// Wrapper component for AdzanControl with useAdzan hook
+function AdzanControlWrapper({
+  latitude,
+  longitude,
+}: {
+  latitude: number;
+  longitude: number;
+}) {
+  const { state, settings, playAdzan, stopAdzan, setVolume, toggleEnabled } =
+    useAdzan({
+      prayerSettings: {
+        latitude,
+        longitude,
+        calculationMethod: "Kemenag",
+      },
+      autoStart: true,
+    });
+
+  return (
+    <AdzanControl
+      isEnabled={settings.enabled}
+      isPlaying={state.isPlaying}
+      volume={settings.volume}
+      countdown={state.countdown}
+      nextPrayer={state.nextPrayer}
+      currentPrayer={state.currentPrayer}
+      onToggleEnabled={toggleEnabled}
+      onPlay={playAdzan}
+      onStop={stopAdzan}
+      onVolumeChange={setVolume}
+    />
+  );
 }
 
 function App() {
@@ -192,10 +229,13 @@ function App() {
                   </div>
 
                   <div className="relative z-10">
-                    <h2 className="text-3xl font-bold mb-2">Selamat Datang, Admin</h2>
+                    <h2 className="text-3xl font-bold mb-2">
+                      Selamat Datang, Admin
+                    </h2>
                     <p className="text-white/70 max-w-lg mb-6">
-                      Sistem monitoring dan kontrol display masjid Anda berjalan dengan normal.
-                      Semua data tersinkronisasi dengan Cloudflare D1.
+                      Sistem monitoring dan kontrol display masjid Anda berjalan
+                      dengan normal. Semua data tersinkronisasi dengan
+                      Cloudflare D1.
                     </p>
                     <div className="flex gap-4">
                       <button
@@ -218,7 +258,9 @@ function App() {
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                   <div className="bg-slate-50/50 px-8 py-5 border-b border-slate-100 flex justify-between items-center">
                     <h3 className="font-bold text-emerald-950 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-emerald-600">history</span>
+                      <span className="material-symbols-outlined text-emerald-600">
+                        history
+                      </span>
                       Aktivitas Terakhir
                     </h3>
                     <button
@@ -229,18 +271,26 @@ function App() {
                     </button>
                   </div>
                   <div className="p-0">
-                    <SystemEvents events={systemEvents.slice(0, 5)} showTitle={false} />
+                    <SystemEvents
+                      events={systemEvents.slice(0, 5)}
+                      showTitle={false}
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Right Column - Status & Specs */}
               <div className="lg:col-span-4 space-y-8">
+                {/* Hijri Calendar */}
+                <HijriCalendar />
+
                 <SecurityStatus />
 
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
                   <h3 className="font-bold text-emerald-950 mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-emerald-600">memory</span>
+                    <span className="material-symbols-outlined text-emerald-600">
+                      memory
+                    </span>
                     Resource Device
                   </h3>
                   <div className="space-y-4">
@@ -461,14 +511,49 @@ function App() {
 
       case "prayer":
         return (
-          <div className="text-center py-20">
-            <span className="material-symbols-outlined text-8xl text-slate-200 mb-4">
-              schedule
-            </span>
-            <h3 className="text-xl font-bold text-slate-400">
-              Kalkulasi Waktu Sholat
-            </h3>
-            <p className="text-slate-400">Coming soon...</p>
+          <div className="space-y-8">
+            {/* Prayer Times Header */}
+            <div className="bg-linear-to-br from-emerald-900 via-emerald-800 to-emerald-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+              <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10">
+                <span className="material-symbols-outlined text-[150px]">
+                  mosque
+                </span>
+              </div>
+              <div className="relative z-10">
+                <h2 className="text-3xl font-bold mb-2">
+                  Waktu Sholat Hari Ini
+                </h2>
+                <p className="text-white/70 max-w-lg">
+                  Jadwal waktu sholat berdasarkan lokasi masjid. Adzan akan
+                  berkumandang otomatis saat waktu sholat tiba.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Hijri Calendar */}
+              <HijriCalendar />
+
+              {/* Adzan Control - with mosque coordinates */}
+              {mosqueInfo && (
+                <div className="lg:col-span-2">
+                  <AdzanControlWrapper
+                    latitude={parseFloat(mosqueInfo.coordinates.latitude) || 0}
+                    longitude={
+                      parseFloat(mosqueInfo.coordinates.longitude) || 0
+                    }
+                  />
+                </div>
+              )}
+              {!mosqueInfo && (
+                <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                  <p className="text-slate-500 text-center">
+                    Silakan atur lokasi masjid terlebih dahulu di menu{" "}
+                    <strong>Pengaturan Lokasi</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         );
 
