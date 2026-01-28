@@ -313,25 +313,25 @@ export function RoyalLayout({
         style={{ backgroundColor: colors.primary }}
       >
         <div
-          className="animate-marquee whitespace-nowrap flex items-center gap-8 font-medium uppercase tracking-wider text-xs"
+          className="animate-marquee whitespace-nowrap inline-flex items-center font-medium uppercase tracking-wider text-xs"
           style={{ color: colors.bg }}
         >
           {runningTextItems.map((item, index) => (
-            <div key={index} className="flex items-center gap-2 px-6">
+            <span key={index} className="inline-flex items-center gap-4 px-6">
               <span>{item}</span>
               {index < runningTextItems.length - 1 && (
                 <span className="text-base opacity-50">•</span>
               )}
-            </div>
+            </span>
           ))}
           {/* Duplicate for seamless loop */}
           {runningTextItems.map((item, index) => (
-            <div key={`dup-${index}`} className="flex items-center gap-2 px-6">
+            <span key={`dup-${index}`} className="inline-flex items-center gap-4 px-6">
               <span>{item}</span>
               {index < runningTextItems.length - 1 && (
                 <span className="text-base opacity-50">•</span>
               )}
-            </div>
+            </span>
           ))}
         </div>
       </footer>
