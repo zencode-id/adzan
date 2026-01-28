@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useAutoTheme } from "../../themes";
 
 interface StatCardProps {
   icon: string;
@@ -48,6 +49,21 @@ const formatBytes = (bytes: number): string => {
 export function QuickStats() {
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const { currentTheme } = useAutoTheme();
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   const fetchStorageInfo = useCallback(async () => {
     try {
@@ -83,12 +99,17 @@ export function QuickStats() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard
-        icon="schedule"
+        icon={isOnline ? "wifi" : "wifi_off"}
         label="Status"
-        value="Aktif"
-        color="text-emerald-600"
+        value={isOnline ? "Online" : "Offline"}
+        color={isOnline ? "text-emerald-600" : "text-rose-600"}
       />
-      <StatCard icon="brightness_high" label="Tema" value="Dark" />
+      <StatCard
+        icon="palette"
+        label="Tema"
+        value={currentTheme?.name || "Lampu"}
+        color="text-amber-600"
+      />
       <StatCard
         icon="cloud_upload"
         label="File R2"
