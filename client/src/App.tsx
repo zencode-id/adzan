@@ -160,6 +160,11 @@ function App() {
       const updatedInfo = { ...mosqueInfo, themeId: selectedThemeId };
       await mosqueApi.update(updatedInfo);
       setMosqueInfo(updatedInfo);
+
+      // Sync with global theme context
+      setDefaultTheme(selectedThemeId);
+      setTheme(selectedThemeId);
+
       toast.success("Tema berhasil disimpan!");
       // Log the event
       await systemEventsApi.create({

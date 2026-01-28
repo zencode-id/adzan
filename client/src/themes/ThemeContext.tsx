@@ -76,7 +76,7 @@ export function AutoThemeProvider({
   // Ref to track if initial resolve has happened
   const hasInitialized = useRef(false);
 
-  // Initialize data from API
+  // Initial data fetch
   useEffect(() => {
     const initData = async () => {
       try {
@@ -84,9 +84,9 @@ export function AutoThemeProvider({
         const mosque = await mosqueApi.get();
         if (mosque && mosque.themeId) {
           setDefaultId(mosque.themeId);
-          // Initial theme should follow mosque default if not resolved yet
           if (!hasInitialized.current) {
             setCurrentThemeId(mosque.themeId);
+            hasInitialized.current = true;
           }
         }
 
@@ -120,7 +120,24 @@ export function AutoThemeProvider({
     };
 
     initData();
-  }, []);
+  }, []); // Run only on mount
+
+  // Periodic polling for mosque settings (theme changes)
+  useEffect(() => {
+    const pollMosque = async () => {
+      try {
+        const mosque = await mosqueApi.get();
+        if (mosque && mosque.themeId) {
+          setDefaultId(mosque.themeId);
+        }
+      } catch (error) {
+        console.warn("Polling mosque settings failed:", error);
+      }
+    };
+
+    const interval = setInterval(pollMosque, autoResolveInterval || 30000);
+    return () => clearInterval(interval);
+  }, [autoResolveInterval]); // Stable polling interval
 
   // Get current theme object
   const currentTheme = useMemo(() => {
