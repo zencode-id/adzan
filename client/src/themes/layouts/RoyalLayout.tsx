@@ -309,27 +309,27 @@ export function RoyalLayout({
 
       {/* Footer - Running Text */}
       <footer
-        className="py-3 relative overflow-hidden"
+        className="py-2 relative overflow-hidden"
         style={{ backgroundColor: colors.primary }}
       >
         <div
-          className="animate-marquee whitespace-nowrap flex items-center gap-12 font-bold uppercase tracking-wider text-sm"
+          className="animate-marquee whitespace-nowrap flex items-center gap-8 font-medium uppercase tracking-wider text-xs"
           style={{ color: colors.bg }}
         >
           {runningTextItems.map((item, index) => (
-            <div key={index} className="flex items-center gap-2 px-8">
+            <div key={index} className="flex items-center gap-2 px-6">
               <span>{item}</span>
               {index < runningTextItems.length - 1 && (
-                <span className="text-2xl opacity-50">•</span>
+                <span className="text-base opacity-50">•</span>
               )}
             </div>
           ))}
           {/* Duplicate for seamless loop */}
           {runningTextItems.map((item, index) => (
-            <div key={`dup-${index}`} className="flex items-center gap-2 px-8">
+            <div key={`dup-${index}`} className="flex items-center gap-2 px-6">
               <span>{item}</span>
               {index < runningTextItems.length - 1 && (
-                <span className="text-2xl opacity-50">•</span>
+                <span className="text-base opacity-50">•</span>
               )}
             </div>
           ))}
