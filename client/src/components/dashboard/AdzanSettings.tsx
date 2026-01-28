@@ -12,7 +12,11 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { adzanSettingsApi, type AdzanSettingsData } from "../../lib/api";
+import {
+  adzanSettingsApi,
+  systemEventsApi,
+  type AdzanSettingsData,
+} from "../../lib/api";
 
 interface AdzanSettingsProps {
   isPlaying: boolean;
@@ -99,6 +103,12 @@ export function AdzanSettings({
     if (result.success) {
       setHasChanges(false);
       toast.success("Pengaturan adzan berhasil disimpan");
+      // Log the event
+      await systemEventsApi.create({
+        title: "Pengaturan adzan diperbarui",
+        description: `Volume: ${settings.volume}%, Tarhim: ${settings.tarhimEnabled ? "Aktif" : "Nonaktif"}`,
+        event_type: "success",
+      });
     } else {
       toast.error("Gagal menyimpan pengaturan");
     }

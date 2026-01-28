@@ -155,6 +155,12 @@ function App() {
       await mosqueApi.update(updatedInfo);
       setMosqueInfo(updatedInfo);
       toast.success("Tema berhasil disimpan!");
+      // Log the event
+      await systemEventsApi.create({
+        title: "Tema display diperbarui",
+        description: `Tema diubah ke: ${selectedThemeId}`,
+        event_type: "success",
+      });
     } catch (error) {
       console.error("Failed to save theme:", error);
       toast.error("Gagal menyimpan tema");
@@ -164,19 +170,17 @@ function App() {
   };
 
   // Format timestamp helper - defined before use
-  // Database stores UTC time, need to convert to local timezone
+  // Database stores UTC time (SQLite CURRENT_TIMESTAMP), need to convert to local timezone
   const formatTimestamp = (dateString: string): string => {
-    // Parse as UTC if no timezone indicator present
+    // SQLite format is like "2026-01-28 04:37:00" without timezone
+    // Always treat as UTC and convert to local
     let date: Date;
-    if (
-      dateString.includes("Z") ||
-      dateString.includes("+") ||
-      dateString.includes("-")
-    ) {
+    if (dateString.includes("Z") || dateString.includes("+")) {
       date = new Date(dateString);
     } else {
-      // Assume UTC if no timezone
-      date = new Date(dateString + "Z");
+      // SQLite datetime - append Z to treat as UTC
+      // Replace space with T for proper ISO format
+      date = new Date(dateString.replace(" ", "T") + "Z");
     }
 
     const now = new Date();

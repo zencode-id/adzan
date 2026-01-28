@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { mosqueApi, type MosqueInfo } from "../../lib/api";
+import { mosqueApi, systemEventsApi, type MosqueInfo } from "../../lib/api";
 import {
   fetchProvinces,
   fetchCitiesByProvince,
@@ -194,6 +194,12 @@ export function LocationSettings({ onSave }: LocationSettingsProps) {
         setIsEditing(false);
         onSave?.(result.data);
         toast.success("Lokasi masjid berhasil disimpan");
+        // Log the event
+        await systemEventsApi.create({
+          title: "Lokasi masjid diperbarui",
+          description: `${result.data.name} - ${result.data.address}`,
+          event_type: "success",
+        });
       } else {
         setError("Gagal menyimpan perubahan");
         toast.error("Gagal menyimpan lokasi");
