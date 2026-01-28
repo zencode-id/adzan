@@ -10,9 +10,12 @@ import {
   LocationSettings,
   QuickStats,
   ThemeSelector,
+  ThemeScheduleManager,
+  ThemeAssetGallery,
   HijriCalendar,
   AdzanControl,
 } from "./components/dashboard";
+import type { ScheduleFormData } from "./components/dashboard/ThemeScheduleManager";
 import { useAdzan } from "./hooks/useAdzan";
 import { useAutoTheme } from "./themes";
 import { systemEventsApi, mosqueApi, type MosqueInfo } from "./lib/api";
@@ -98,8 +101,12 @@ function App() {
   // Mosque and Theme State
   const { setTheme, setDefaultTheme } = useAutoTheme();
   const [mosqueInfo, setMosqueInfo] = useState<MosqueInfo | null>(null);
-  const [selectedThemeId, setSelectedThemeId] = useState("emerald-classic");
+  const [selectedThemeId, setSelectedThemeId] = useState("emerald");
   const [isSavingTheme, setIsSavingTheme] = useState(false);
+  const [displayTab, setDisplayTab] = useState<"theme" | "schedule" | "assets">(
+    "theme",
+  );
+  const [themeSchedules, setThemeSchedules] = useState<ScheduleFormData[]>([]);
 
   // Fetch mosque info on mount
   useEffect(() => {
@@ -108,9 +115,9 @@ function App() {
         const info = await mosqueApi.get();
         if (info) {
           setMosqueInfo(info);
-          setSelectedThemeId(info.themeId || "emerald-classic");
-          setDefaultTheme(info.themeId || "emerald-classic");
-          setTheme(info.themeId || "emerald-classic");
+          setSelectedThemeId(info.themeId || "emerald");
+          setDefaultTheme(info.themeId || "emerald");
+          setTheme(info.themeId || "emerald");
         }
       } catch (error) {
         console.error("Failed to fetch mosque info:", error);
@@ -366,9 +373,8 @@ function App() {
                   Layar Display Masjid
                 </h2>
                 <p className="text-white/70 max-w-xl mb-6">
-                  Tampilan utama yang akan ditampilkan di TV/Monitor masjid.
-                  Berisi jam realtime, jadwal sholat, nama masjid, dan running
-                  text pengumuman.
+                  Kelola tema, jadwal otomatis, dan aset gambar untuk tampilan
+                  layar masjid Anda.
                 </p>
 
                 <div className="flex items-center gap-4">
@@ -397,13 +403,77 @@ function App() {
               </div>
             </div>
 
-            {/* Theme Selection */}
-            <ThemeSelector
-              selectedThemeId={selectedThemeId}
-              onThemeSelect={setSelectedThemeId}
-              onSave={handleThemeSave}
-              isLoading={isSavingTheme}
-            />
+            {/* Tabs Navigation */}
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex border-b border-slate-200">
+                <button
+                  onClick={() => setDisplayTab("theme")}
+                  className={`flex-1 px-6 py-4 font-semibold text-sm transition-all ${
+                    displayTab === "theme"
+                      ? "text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50"
+                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg align-middle mr-2">
+                    palette
+                  </span>
+                  Pilih Tema
+                </button>
+                <button
+                  onClick={() => setDisplayTab("schedule")}
+                  className={`flex-1 px-6 py-4 font-semibold text-sm transition-all ${
+                    displayTab === "schedule"
+                      ? "text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50"
+                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg align-middle mr-2">
+                    schedule
+                  </span>
+                  Jadwal Otomatis
+                </button>
+                <button
+                  onClick={() => setDisplayTab("assets")}
+                  className={`flex-1 px-6 py-4 font-semibold text-sm transition-all ${
+                    displayTab === "assets"
+                      ? "text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50"
+                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg align-middle mr-2">
+                    image
+                  </span>
+                  Aset Gambar
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              <div className="p-6">
+                {displayTab === "theme" && (
+                  <ThemeSelector
+                    selectedThemeId={selectedThemeId}
+                    onThemeSelect={setSelectedThemeId}
+                    onSave={handleThemeSave}
+                    isLoading={isSavingTheme}
+                  />
+                )}
+
+                {displayTab === "schedule" && (
+                  <ThemeScheduleManager
+                    schedules={themeSchedules}
+                    onScheduleChange={setThemeSchedules}
+                    onSave={() =>
+                      console.log("Saving schedules:", themeSchedules)
+                    }
+                    isLoading={false}
+                  />
+                )}
+
+                {displayTab === "assets" && (
+                  <ThemeAssetGallery themeLocalId={selectedThemeId} />
+                )}
+              </div>
+            </div>
 
             {/* Instructions Card */}
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -424,11 +494,10 @@ function App() {
                     </div>
                     <div>
                       <h4 className="font-bold text-emerald-950 mb-1">
-                        Buka Display
+                        Pilih Tema
                       </h4>
                       <p className="text-sm text-slate-500">
-                        Klik tombol "Buka Display" untuk membuka layar di tab
-                        baru
+                        Pilih tema yang sesuai atau atur jadwal otomatis
                       </p>
                     </div>
                   </div>
@@ -439,10 +508,10 @@ function App() {
                     </div>
                     <div>
                       <h4 className="font-bold text-emerald-950 mb-1">
-                        Fullscreen
+                        Buka Display
                       </h4>
                       <p className="text-sm text-slate-500">
-                        Tekan F11 untuk mode fullscreen di browser
+                        Klik tombol "Buka Display" untuk membuka layar
                       </p>
                     </div>
                   </div>
@@ -453,61 +522,14 @@ function App() {
                     </div>
                     <div>
                       <h4 className="font-bold text-emerald-950 mb-1">
-                        Tampilkan di TV
+                        Fullscreen
                       </h4>
                       <p className="text-sm text-slate-500">
-                        Hubungkan ke TV/Monitor via HDMI dan biarkan berjalan
+                        Tekan F11 untuk mode fullscreen di TV/Monitor
                       </p>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                <div className="flex items-center gap-3 text-slate-400 mb-2">
-                  <span className="material-symbols-outlined">schedule</span>
-                  <span className="text-xs font-bold uppercase tracking-widest">
-                    Status
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-emerald-600">Aktif</p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                <div className="flex items-center gap-3 text-slate-400 mb-2">
-                  <span className="material-symbols-outlined">
-                    brightness_high
-                  </span>
-                  <span className="text-xs font-bold uppercase tracking-widest">
-                    Tema
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-emerald-950">Dark</p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                <div className="flex items-center gap-3 text-slate-400 mb-2">
-                  <span className="material-symbols-outlined">
-                    aspect_ratio
-                  </span>
-                  <span className="text-xs font-bold uppercase tracking-widest">
-                    Rasio
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-emerald-950">16:9</p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                <div className="flex items-center gap-3 text-slate-400 mb-2">
-                  <span className="material-symbols-outlined">update</span>
-                  <span className="text-xs font-bold uppercase tracking-widest">
-                    Refresh
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-emerald-950">1 detik</p>
               </div>
             </div>
           </div>
