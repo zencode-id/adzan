@@ -3,7 +3,7 @@
 // Renders the appropriate layout based on active theme
 // ============================================
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   mosqueApi,
   adzanSettingsApi,
@@ -35,6 +35,32 @@ export function ThemedDisplay() {
   const [adzanSettings, setAdzanSettings] = useState<AdzanSettingsData | null>(
     null,
   );
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Toggle fullscreen function
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((e) => {
+        console.error(`Error attempting to enable fullscreen: ${e.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }, []);
+
+  // Listen for fullscreen changes (to sync state)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   // Use global auto theme context
   const { currentTheme, isTransitioning } = useAutoTheme();
@@ -64,21 +90,26 @@ export function ThemedDisplay() {
   const lat = mosqueInfo ? parseFloat(mosqueInfo.coordinates.latitude) : 0;
   const lng = mosqueInfo ? parseFloat(mosqueInfo.coordinates.longitude) : 0;
 
+  // Memoize prayer settings to avoid infinite render loop
+  const adzanOptions = useMemo(() => {
+    return {
+      prayerSettings: {
+        latitude: lat,
+        longitude: lng,
+        calculationMethod: "Kemenag" as const,
+      },
+      adzanSettings: adzanSettings || undefined,
+      autoStart:
+        mosqueInfo !== null &&
+        !isNaN(lat) &&
+        !isNaN(lng) &&
+        lat !== 0 &&
+        lng !== 0,
+    };
+  }, [lat, lng, adzanSettings, mosqueInfo]);
+
   // Adzan auto-playback
-  const { state: adzanState } = useAdzan({
-    prayerSettings: {
-      latitude: lat,
-      longitude: lng,
-      calculationMethod: "Kemenag",
-    },
-    adzanSettings: adzanSettings || undefined,
-    autoStart:
-      mosqueInfo !== null &&
-      !isNaN(lat) &&
-      !isNaN(lng) &&
-      lat !== 0 &&
-      lng !== 0,
-  });
+  const { state: adzanState } = useAdzan(adzanOptions);
 
   // Calculate prayer times
   const dateString = currentTime.toDateString();
@@ -208,7 +239,7 @@ export function ThemedDisplay() {
   if (!mosqueInfo || !prayerTimes) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
+        className="min-h-screen flex items-center justify-center font-sans"
         style={{ backgroundColor: currentTheme.colors.bg }}
       >
         <div
@@ -295,14 +326,23 @@ export function ThemedDisplay() {
   };
 
   return (
-    <>
+    <div className="cursor-pointer" onClick={toggleFullscreen}>
+      {/* Fullscreen Tooltip/Hint when not in fullscreen */}
+      {!isFullscreen && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] animate-bounce pointer-events-none">
+          <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2 text-white">
+            <span className="material-symbols-outlined text-sm">fullscreen</span>
+            <span className="text-xs font-medium uppercase tracking-widest">Klik untuk Fullscreen</span>
+          </div>
+        </div>
+      )}
       <ThemeTransition theme={currentTheme} isTransitioning={isTransitioning}>
         {renderLayout()}
       </ThemeTransition>
 
       {/* Debug Panel - Shows only in development or can be toggled by user if needed */}
       <ThemeDebugPanel show={import.meta.env.MODE === "development"} />
-    </>
+    </div>
   );
 }
 
