@@ -247,20 +247,6 @@ function App() {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  const handleCheckUpdates = () => {
-    alert("Checking for updates...");
-  };
-
-  const handleRestart = () => {
-    if (confirm("Are you sure you want to restart the system?")) {
-      alert("System is restarting...");
-    }
-  };
-
-  const handleDownloadLogs = () => {
-    alert("Downloading system logs...");
-  };
-
   const handleLocationSave = (data: MosqueInfo) => {
     console.log("Location saved:", data);
   };
@@ -670,11 +656,7 @@ function App() {
               </div>
 
               <div className="lg:col-span-4 space-y-6">
-                <SystemMaintenance
-                  onCheckUpdates={handleCheckUpdates}
-                  onRestart={handleRestart}
-                  onDownloadLogs={handleDownloadLogs}
-                />
+                <SystemMaintenance />
                 <SecurityStatus />
               </div>
             </div>

@@ -1,9 +1,14 @@
+import { useState } from "react";
+import { toast } from "sonner";
+import { systemEventsApi } from "../../lib/api";
+
 interface MaintenanceButtonProps {
   icon: string;
   iconColor?: string;
   label: string;
   onClick?: () => void;
   variant?: "primary" | "secondary";
+  loading?: boolean;
 }
 
 function MaintenanceButton({
@@ -12,6 +17,7 @@ function MaintenanceButton({
   label,
   onClick,
   variant = "primary",
+  loading = false,
 }: MaintenanceButtonProps) {
   const baseClasses =
     variant === "primary"
@@ -23,10 +29,15 @@ function MaintenanceButton({
   return (
     <button
       onClick={onClick}
-      className={`w-full ${baseClasses} border flex items-center justify-between p-4 rounded-2xl transition-all group btn-press`}
+      disabled={loading}
+      className={`w-full ${baseClasses} border flex items-center justify-between p-4 rounded-2xl transition-all group btn-press disabled:opacity-50`}
     >
       <div className="flex items-center gap-3">
-        <span className={`material-symbols-outlined ${iconColor}`}>{icon}</span>
+        <span
+          className={`material-symbols-outlined ${iconColor} ${loading ? "animate-spin" : ""}`}
+        >
+          {loading ? "progress_activity" : icon}
+        </span>
         <span className={`font-semibold text-sm ${textClasses}`}>{label}</span>
       </div>
       <span className="material-symbols-outlined text-emerald-400 group-hover:translate-x-1 transition-transform">
@@ -36,17 +47,108 @@ function MaintenanceButton({
   );
 }
 
-interface SystemMaintenanceProps {
-  onCheckUpdates?: () => void;
-  onRestart?: () => void;
-  onDownloadLogs?: () => void;
-}
+export function SystemMaintenance() {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
-export function SystemMaintenance({
-  onCheckUpdates,
-  onRestart,
-  onDownloadLogs,
-}: SystemMaintenanceProps) {
+  const handleDownloadLogs = async () => {
+    setIsDownloading(true);
+    try {
+      // Fetch all system events
+      const events = await systemEventsApi.getAll(100);
+
+      if (events.length === 0) {
+        toast.info("Tidak ada log untuk diunduh");
+        return;
+      }
+
+      // Format as text file
+      const logContent = events
+        .map(
+          (e) =>
+            `[${e.created_at}] [${e.event_type.toUpperCase()}] ${e.title}\n  ${e.description || "-"}`,
+        )
+        .join("\n\n");
+
+      const header = `===========================================
+MOSQUE DISPLAY SYSTEM LOGS
+Generated: ${new Date().toLocaleString("id-ID")}
+Total Events: ${events.length}
+===========================================\n\n`;
+
+      // Create and download file
+      const blob = new Blob([header + logContent], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `system-logs-${new Date().toISOString().split("T")[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success("Log berhasil diunduh");
+    } catch (error) {
+      console.error("Failed to download logs:", error);
+      toast.error("Gagal mengunduh log");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleSyncData = async () => {
+    setIsSyncing(true);
+    try {
+      // Force reload data from server
+      window.location.reload();
+    } catch (error) {
+      toast.error("Gagal menyinkronkan data");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    setIsClearing(true);
+    try {
+      // Clear localStorage
+      const keysToKeep = ["mosque_id"]; // Keep essential data
+      const allKeys = Object.keys(localStorage);
+      let cleared = 0;
+
+      for (const key of allKeys) {
+        if (!keysToKeep.includes(key)) {
+          localStorage.removeItem(key);
+          cleared++;
+        }
+      }
+
+      // Clear sessionStorage
+      sessionStorage.clear();
+
+      // Clear cache if available
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+      }
+
+      toast.success(`Cache berhasil dibersihkan (${cleared} item)`);
+
+      // Log the event
+      await systemEventsApi.create({
+        title: "Cache dibersihkan",
+        description: `${cleared} item cache dihapus`,
+        event_type: "info",
+      });
+    } catch (error) {
+      console.error("Failed to clear cache:", error);
+      toast.error("Gagal membersihkan cache");
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   return (
     <div className="bg-emerald-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden group">
       {/* Background Icon */}
@@ -55,29 +157,32 @@ export function SystemMaintenance({
       </div>
 
       <div className="relative z-10">
-        <h3 className="text-xl font-bold mb-6">System Maintenance</h3>
+        <h3 className="text-xl font-bold mb-6">Pemeliharaan Sistem</h3>
 
         <div className="space-y-4">
           <MaintenanceButton
-            icon="system_update"
+            icon="sync"
             iconColor="text-[var(--primary-gold)]"
-            label="Check for Updates"
-            onClick={onCheckUpdates}
+            label="Sinkronkan Data"
+            onClick={handleSyncData}
+            loading={isSyncing}
           />
 
           <MaintenanceButton
-            icon="restart_alt"
+            icon="delete_sweep"
             iconColor="text-orange-400"
-            label="Restart System"
-            onClick={onRestart}
+            label="Bersihkan Cache"
+            onClick={handleClearCache}
+            loading={isClearing}
           />
 
           <MaintenanceButton
             icon="download"
             iconColor="text-white"
-            label="Download Logs"
-            onClick={onDownloadLogs}
+            label="Unduh Log Sistem"
+            onClick={handleDownloadLogs}
             variant="secondary"
+            loading={isDownloading}
           />
         </div>
       </div>

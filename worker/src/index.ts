@@ -547,6 +547,162 @@ app.post("/api/system-events", async (c) => {
 });
 
 // ============================================
+// Routes - Display Content
+// ============================================
+app.get("/api/display-content", async (c) => {
+  try {
+    const result = await c.env.DB.prepare(
+      "SELECT * FROM display_content ORDER BY display_order ASC",
+    ).all();
+    return c.json(result.results);
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to fetch display content" },
+      500,
+    );
+  }
+});
+
+app.post("/api/display-content", async (c) => {
+  try {
+    const body = await c.req.json();
+    const result = await c.env.DB.prepare(
+      `INSERT INTO display_content (content_type, title, content, media_url, display_order, duration_seconds, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(
+        body.content_type || "text",
+        body.title || "",
+        body.content || "",
+        body.media_url || "",
+        body.display_order || 0,
+        body.duration_seconds || 10,
+        body.is_active !== false ? 1 : 0,
+      )
+      .run();
+
+    // Log event
+    await c.env.DB.prepare(
+      `INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)`,
+    )
+      .bind(
+        "Konten display ditambahkan",
+        `Ditambahkan: ${body.title}`,
+        "success",
+      )
+      .run();
+
+    return c.json({ success: true, id: result.meta.last_row_id });
+  } catch (error: any) {
+    console.error("Error creating display content:", error);
+    return c.json(
+      { success: false, error: "Failed to create display content" },
+      500,
+    );
+  }
+});
+
+app.put("/api/display-content/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+
+    await c.env.DB.prepare(
+      `UPDATE display_content SET
+        content_type = ?,
+        title = ?,
+        content = ?,
+        media_url = ?,
+        display_order = ?,
+        duration_seconds = ?,
+        is_active = ?
+      WHERE id = ?`,
+    )
+      .bind(
+        body.content_type,
+        body.title,
+        body.content || "",
+        body.media_url || "",
+        body.display_order || 0,
+        body.duration_seconds || 10,
+        body.is_active ? 1 : 0,
+        id,
+      )
+      .run();
+
+    // Log event
+    await c.env.DB.prepare(
+      `INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)`,
+    )
+      .bind("Konten display diperbarui", `Diubah: ${body.title}`, "info")
+      .run();
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to update display content" },
+      500,
+    );
+  }
+});
+
+app.delete("/api/display-content/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+
+    // Get title before delete for logging
+    const item = await c.env.DB.prepare(
+      "SELECT title FROM display_content WHERE id = ?",
+    )
+      .bind(id)
+      .first();
+
+    await c.env.DB.prepare("DELETE FROM display_content WHERE id = ?")
+      .bind(id)
+      .run();
+
+    // Log event
+    await c.env.DB.prepare(
+      `INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)`,
+    )
+      .bind(
+        "Konten display dihapus",
+        `Dihapus: ${item?.title || "Unknown"}`,
+        "warning",
+      )
+      .run();
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to delete display content" },
+      500,
+    );
+  }
+});
+
+// Bulk update order
+app.put("/api/display-content/reorder", async (c) => {
+  try {
+    const body = await c.req.json();
+    const items = body.items as { id: number; display_order: number }[];
+
+    for (const item of items) {
+      await c.env.DB.prepare(
+        "UPDATE display_content SET display_order = ? WHERE id = ?",
+      )
+        .bind(item.display_order, item.id)
+        .run();
+    }
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to reorder display content" },
+      500,
+    );
+  }
+});
 // Routes - Adzan Settings
 // ============================================
 app.get("/api/adzan-settings", async (c) => {
