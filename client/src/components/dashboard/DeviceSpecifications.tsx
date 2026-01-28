@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+
 interface SpecificationItemProps {
   icon: string;
   label: string;
@@ -44,56 +46,182 @@ function SpecificationItem({
   );
 }
 
-interface DeviceSpecificationsProps {
-  serialNumber?: string;
-  specifications?: {
-    firmwareVersion: string;
-    ipAddress: string;
-    macAddress: string;
-    lastBoot: string;
-    signalStrength: string;
-    signalStatus: "Excellent" | "Good" | "Poor";
-    memory: string;
+interface SystemInfo {
+  browser: string;
+  os: string;
+  screenResolution: string;
+  language: string;
+  timezone: string;
+  onlineStatus: "Online" | "Offline";
+  memoryUsage: string;
+  cores: string;
+  connection: string;
+  connectionStatus: "Excellent" | "Good" | "Poor";
+}
+
+function getSystemInfo(): SystemInfo {
+  // Browser info
+  const userAgent = navigator.userAgent;
+  let browser = "Unknown";
+  if (userAgent.includes("Chrome") && !userAgent.includes("Edg")) {
+    const match = userAgent.match(/Chrome\/(\d+)/);
+    browser = `Chrome ${match ? match[1] : ""}`;
+  } else if (userAgent.includes("Firefox")) {
+    const match = userAgent.match(/Firefox\/(\d+)/);
+    browser = `Firefox ${match ? match[1] : ""}`;
+  } else if (userAgent.includes("Safari") && !userAgent.includes("Chrome")) {
+    browser = "Safari";
+  } else if (userAgent.includes("Edg")) {
+    const match = userAgent.match(/Edg\/(\d+)/);
+    browser = `Edge ${match ? match[1] : ""}`;
+  }
+
+  // OS info
+  let os = "Unknown";
+  if (userAgent.includes("Windows NT 10")) os = "Windows 10/11";
+  else if (userAgent.includes("Windows")) os = "Windows";
+  else if (userAgent.includes("Mac OS X")) os = "macOS";
+  else if (userAgent.includes("Linux")) os = "Linux";
+  else if (userAgent.includes("Android")) os = "Android";
+  else if (userAgent.includes("iOS") || userAgent.includes("iPhone"))
+    os = "iOS";
+
+  // Screen resolution
+  const screenResolution = `${window.screen.width} × ${window.screen.height}`;
+
+  // Language
+  const language = navigator.language || "id-ID";
+
+  // Timezone
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // Online status
+  const onlineStatus = navigator.onLine ? "Online" : "Offline";
+
+  // Memory (if available)
+  let memoryUsage = "N/A";
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  if (nav.deviceMemory) {
+    memoryUsage = `${nav.deviceMemory} GB RAM`;
+  }
+
+  // CPU cores
+  const cores = navigator.hardwareConcurrency
+    ? `${navigator.hardwareConcurrency} Cores`
+    : "N/A";
+
+  // Connection type
+  let connection = "Unknown";
+  let connectionStatus: "Excellent" | "Good" | "Poor" = "Good";
+  const conn = (
+    navigator as Navigator & {
+      connection?: { effectiveType?: string; downlink?: number };
+    }
+  ).connection;
+  if (conn) {
+    const effectiveType = conn.effectiveType || "";
+    if (effectiveType === "4g") {
+      connection = "4G / WiFi";
+      connectionStatus = "Excellent";
+    } else if (effectiveType === "3g") {
+      connection = "3G";
+      connectionStatus = "Good";
+    } else if (effectiveType === "2g" || effectiveType === "slow-2g") {
+      connection = "2G (Slow)";
+      connectionStatus = "Poor";
+    } else {
+      connection = effectiveType || "WiFi";
+      connectionStatus = "Good";
+    }
+    if (conn.downlink) {
+      connection += ` (${conn.downlink} Mbps)`;
+    }
+  } else if (navigator.onLine) {
+    connection = "Connected";
+    connectionStatus = "Excellent";
+  }
+
+  return {
+    browser,
+    os,
+    screenResolution,
+    language,
+    timezone,
+    onlineStatus,
+    memoryUsage,
+    cores,
+    connection,
+    connectionStatus,
   };
 }
 
-export function DeviceSpecifications({
-  serialNumber = "MQ-8892-XT",
-  specifications = {
-    firmwareVersion: "v2.4.12-stable",
-    ipAddress: "192.168.1.105",
-    macAddress: "00:1A:2B:3C:4D:5E",
-    lastBoot: "12 Days, 4 Hours ago",
-    signalStrength: "-52 dBm",
-    signalStatus: "Excellent",
-    memory: "1.2 GB / 2.0 GB",
-  },
-}: DeviceSpecificationsProps) {
-  const signalBadgeVariant = {
+export function DeviceSpecifications() {
+  const [systemInfo, setSystemInfo] = useState<SystemInfo>(() =>
+    getSystemInfo(),
+  );
+  const [uptime, setUptime] = useState("Loading...");
+
+  useEffect(() => {
+    // Calculate page uptime
+    const startTime = Date.now();
+    const updateUptime = () => {
+      const elapsed = Date.now() - startTime;
+      const seconds = Math.floor(elapsed / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+
+      if (hours > 0) {
+        setUptime(`${hours}h ${minutes % 60}m aktif`);
+      } else if (minutes > 0) {
+        setUptime(`${minutes}m ${seconds % 60}s aktif`);
+      } else {
+        setUptime(`${seconds}s aktif`);
+      }
+    };
+
+    updateUptime();
+    const interval = setInterval(updateUptime, 1000);
+
+    // Listen for online/offline changes
+    const handleOnline = () => setSystemInfo(getSystemInfo());
+    const handleOffline = () => setSystemInfo(getSystemInfo());
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  const connectionBadgeVariant = {
     Excellent: "success" as const,
     Good: "warning" as const,
     Poor: "error" as const,
   };
 
   const specItems = [
+    { icon: "web", label: "Browser", value: systemInfo.browser },
+    { icon: "computer", label: "Sistem Operasi", value: systemInfo.os },
     {
-      icon: "terminal",
-      label: "Firmware Version",
-      value: specifications.firmwareVersion,
+      icon: "monitor",
+      label: "Resolusi Layar",
+      value: systemInfo.screenResolution,
     },
-    { icon: "lan", label: "IP Address", value: specifications.ipAddress },
-    { icon: "router", label: "MAC Address", value: specifications.macAddress },
-    { icon: "update", label: "Last Boot", value: specifications.lastBoot },
+    { icon: "schedule", label: "Session", value: uptime },
     {
       icon: "wifi",
-      label: "Signal Strength",
-      value: specifications.signalStrength,
+      label: "Koneksi",
+      value: systemInfo.connection,
       badge: {
-        text: specifications.signalStatus,
-        variant: signalBadgeVariant[specifications.signalStatus],
+        text: systemInfo.connectionStatus,
+        variant: connectionBadgeVariant[systemInfo.connectionStatus],
       },
     },
-    { icon: "memory", label: "Memory (RAM)", value: specifications.memory },
+    { icon: "memory", label: "CPU", value: systemInfo.cores },
+    { icon: "language", label: "Bahasa", value: systemInfo.language },
+    { icon: "schedule", label: "Zona Waktu", value: systemInfo.timezone },
   ];
 
   return (
@@ -102,12 +230,18 @@ export function DeviceSpecifications({
       <div className="bg-slate-50/50 px-8 py-5 border-b border-slate-100 flex items-center justify-between">
         <h3 className="font-bold text-emerald-950 flex items-center gap-2">
           <span className="material-symbols-outlined text-emerald-600">
-            settings_ethernet
+            info
           </span>
-          Device Specifications
+          Informasi Sistem
         </h3>
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-          Serial: {serialNumber}
+        <span
+          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${
+            systemInfo.onlineStatus === "Online"
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-red-100 text-red-700"
+          }`}
+        >
+          {systemInfo.onlineStatus}
         </span>
       </div>
 

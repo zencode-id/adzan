@@ -119,8 +119,32 @@ function App() {
         console.error("Failed to fetch mosque info:", error);
       }
     };
+
     fetchMosqueInfo();
-  }, [setTheme, setDefaultTheme]);
+  }, [setDefaultTheme, setTheme]);
+
+  // Fetch system events when switching to system or dashboard page
+  useEffect(() => {
+    const fetchSystemEvents = async () => {
+      if (currentPage === "system" || currentPage === "dashboard") {
+        try {
+          const events = await systemEventsApi.getAll(10);
+          const formattedEvents: SystemEvent[] = events.map((e) => ({
+            id: String(e.id),
+            title: e.title,
+            description: e.description,
+            timestamp: formatTimestamp(e.created_at),
+            type: e.event_type,
+          }));
+          setSystemEvents(formattedEvents);
+        } catch (error) {
+          console.error("Failed to fetch system events:", error);
+        }
+      }
+    };
+
+    fetchSystemEvents();
+  }, [currentPage]);
 
   const handleThemeSave = async () => {
     if (!mosqueInfo) return;
@@ -609,18 +633,7 @@ function App() {
             {/* Main Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-8 space-y-6">
-                <DeviceSpecifications
-                  serialNumber="MQ-8892-XT"
-                  specifications={{
-                    firmwareVersion: "v2.4.12-stable",
-                    ipAddress: "192.168.1.105",
-                    macAddress: "00:1A:2B:3C:4D:5E",
-                    lastBoot: "12 Days, 4 Hours ago",
-                    signalStrength: "-52 dBm",
-                    signalStatus: "Excellent",
-                    memory: "1.2 GB / 2.0 GB",
-                  }}
-                />
+                <DeviceSpecifications />
               </div>
 
               <div className="lg:col-span-4 space-y-6">
