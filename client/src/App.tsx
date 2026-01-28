@@ -14,6 +14,7 @@ import {
   ThemeAssetGallery,
   HijriCalendar,
   AdzanSettings,
+  DisplayContentManager,
 } from "./components/dashboard";
 import type { ScheduleFormData } from "./components/dashboard/ThemeScheduleManager";
 import { toast } from "sonner";
@@ -37,9 +38,14 @@ const pageConfig: Record<string, { title: string; description: string }> = {
     title: "Pengumuman",
     description: "Kelola dan jadwalkan pengumuman untuk ditampilkan di layar.",
   },
-  display: {
+  content: {
     title: "Konten Display",
-    description: "Konfigurasi konten yang akan ditampilkan di layar.",
+    description:
+      "Kelola konten slideshow, video, dan teks untuk ditampilkan di layar.",
+  },
+  display: {
+    title: "Tema Display",
+    description: "Pilih tema, jadwal otomatis, dan aset gambar untuk layar.",
   },
   prayer: {
     title: "Kalkulasi Waktu Sholat",
@@ -266,6 +272,9 @@ function App() {
     switch (currentPage) {
       case "location":
         return <LocationSettings onSave={handleLocationSave} />;
+
+      case "content":
+        return <DisplayContentManager />;
 
       case "dashboard":
         return (

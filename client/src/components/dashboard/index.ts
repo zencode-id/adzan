@@ -15,3 +15,4 @@ export { DisplaySettings } from "./DisplaySettings";
 export { HijriCalendar } from "./HijriCalendar";
 export { AdzanControl } from "./AdzanControl";
 export { AdzanSettings } from "./AdzanSettings";
+export { DisplayContentManager } from "./DisplayContentManager";

@@ -16,7 +16,8 @@ const navItems: NavItem[] = [
     href: "#",
   },
   { id: "announcements", icon: "campaign", label: "Announcements", href: "#" },
-  { id: "display", icon: "tv", label: "Display Content", href: "#" },
+  { id: "content", icon: "view_carousel", label: "Content Display", href: "#" },
+  { id: "display", icon: "palette", label: "Theme Display", href: "#" },
   { id: "prayer", icon: "schedule", label: "Prayer Calculation", href: "#" },
   { id: "system", icon: "info", label: "System Info", href: "#" },
 ];

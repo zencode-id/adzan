@@ -335,6 +335,20 @@ export const displayContentApi = {
       return { success: false };
     }
   },
+
+  async reorder(
+    items: { id: number; display_order: number }[],
+  ): Promise<{ success: boolean }> {
+    try {
+      return await apiCall<{ success: boolean }>("/display-content/reorder", {
+        method: "PUT",
+        body: JSON.stringify({ items }),
+      });
+    } catch (error) {
+      console.error("Failed to reorder display content:", error);
+      return { success: false };
+    }
+  },
 };
 
 // ============================================
