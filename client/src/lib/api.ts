@@ -396,6 +396,53 @@ export const systemEventsApi = {
   },
 };
 
+// ============================================
+// Adzan Settings API
+// ============================================
+export interface AdzanSettingsData {
+  enabled: boolean;
+  volume: number;
+  useSubuhAdzan: boolean;
+  tarhimEnabled: boolean;
+  tarhimMinutesBeforeImsak: number;
+  cautionEnabled: boolean;
+  cautionSecondsBeforeAdzan: number;
+  cautionSecondsBeforeImsak: number;
+  enabledPrayers: {
+    imsak: boolean;
+    subuh: boolean;
+    dzuhur: boolean;
+    ashar: boolean;
+    maghrib: boolean;
+    isya: boolean;
+  };
+}
+
+export const adzanSettingsApi = {
+  async get(): Promise<AdzanSettingsData | null> {
+    try {
+      return await apiCall<AdzanSettingsData>("/adzan-settings");
+    } catch (error) {
+      console.error("Failed to fetch adzan settings:", error);
+      return null;
+    }
+  },
+
+  async update(
+    data: Partial<AdzanSettingsData>,
+  ): Promise<{ success: boolean }> {
+    try {
+      return await apiCall<{ success: boolean }>("/adzan-settings", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      console.error("Failed to update adzan settings:", error);
+      return { success: false };
+    }
+  },
+};
+
 // Export all APIs
 export const api = {
   mosque: mosqueApi,
@@ -404,6 +451,7 @@ export const api = {
   displayContent: displayContentApi,
   prayerSettings: prayerSettingsApi,
   systemEvents: systemEventsApi,
+  adzanSettings: adzanSettingsApi,
 };
 
 export default api;

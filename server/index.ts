@@ -53,7 +53,9 @@ db.exec(`
 
 // Pastikan kolom theme_id ada (untuk db lama)
 try {
-  db.exec("ALTER TABLE mosque_settings ADD COLUMN theme_id TEXT DEFAULT 'emerald-classic'");
+  db.exec(
+    "ALTER TABLE mosque_settings ADD COLUMN theme_id TEXT DEFAULT 'emerald-classic'",
+  );
 } catch (e) {
   // Kolom mungkin sudah ada
 }
@@ -198,6 +200,33 @@ db.exec(`
   )
 `);
 
+// Tabel Adzan Settings
+db.exec(`
+  CREATE TABLE IF NOT EXISTS adzan_settings (
+    id INTEGER PRIMARY KEY,
+    enabled INTEGER DEFAULT 1,
+    volume INTEGER DEFAULT 80,
+    use_subuh_adzan INTEGER DEFAULT 1,
+    tarhim_enabled INTEGER DEFAULT 1,
+    tarhim_minutes_before_imsak INTEGER DEFAULT 0,
+    caution_enabled INTEGER DEFAULT 1,
+    caution_seconds_before_adzan INTEGER DEFAULT 60,
+    caution_seconds_before_imsak INTEGER DEFAULT 60,
+    enabled_imsak INTEGER DEFAULT 0,
+    enabled_subuh INTEGER DEFAULT 1,
+    enabled_dzuhur INTEGER DEFAULT 1,
+    enabled_ashar INTEGER DEFAULT 1,
+    enabled_maghrib INTEGER DEFAULT 1,
+    enabled_isya INTEGER DEFAULT 1,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// Insert default adzan settings if not exists
+db.exec(`
+  INSERT OR IGNORE INTO adzan_settings (id) VALUES (1)
+`);
+
 // ============================================
 // 2. Seeder (Data default jika kosong)
 // ============================================
@@ -290,57 +319,149 @@ if (cekEvents.count === 0) {
 }
 
 // Seeder Announcements
-const cekAnnouncements = db.prepare("SELECT count(*) as count FROM announcements").get() as { count: number };
+const cekAnnouncements = db
+  .prepare("SELECT count(*) as count FROM announcements")
+  .get() as { count: number };
 if (cekAnnouncements.count === 0) {
   const insertAnn = db.prepare(`
     INSERT INTO announcements (title, content, type, is_active)
     VALUES (?, ?, ?, ?)
   `);
-  insertAnn.run("Selamat Datang", "Terima kasih telah berkunjung ke Masjid Al-Ikhlas", "info", 1);
-  insertAnn.run("Waktu Sholat", "Harap matikan handphone saat sholat berjamaah berlangsung", "warning", 1);
+  insertAnn.run(
+    "Selamat Datang",
+    "Terima kasih telah berkunjung ke Masjid Al-Ikhlas",
+    "info",
+    1,
+  );
+  insertAnn.run(
+    "Waktu Sholat",
+    "Harap matikan handphone saat sholat berjamaah berlangsung",
+    "warning",
+    1,
+  );
   console.log("✅ Data pengumuman default berhasil dimasukkan!");
 }
 
 // Seeder Display Content
-const cekDisplay = db.prepare("SELECT count(*) as count FROM display_content").get() as { count: number };
+const cekDisplay = db
+  .prepare("SELECT count(*) as count FROM display_content")
+  .get() as { count: number };
 if (cekDisplay.count === 0) {
   const insertContent = db.prepare(`
     INSERT INTO display_content (content_type, title, content, duration_seconds, is_active)
     VALUES (?, ?, ?, ?, ?)
   `);
-  insertContent.run("image", "Banner Ramadan", "Selamat Menunaikan Ibadah Puasa", 15, 1);
-  insertContent.run("text", "Hadits Hari Ini", "Kebersihan adalah sebagian dari iman", 10, 1);
+  insertContent.run(
+    "image",
+    "Banner Ramadan",
+    "Selamat Menunaikan Ibadah Puasa",
+    15,
+    1,
+  );
+  insertContent.run(
+    "text",
+    "Hadits Hari Ini",
+    "Kebersihan adalah sebagian dari iman",
+    10,
+    1,
+  );
   console.log("✅ Data konten display default berhasil dimasukkan!");
 }
 
 // Seeder Themes
-const cekThemes = db.prepare("SELECT count(*) as count FROM themes").get() as { count: number };
+const cekThemes = db.prepare("SELECT count(*) as count FROM themes").get() as {
+  count: number;
+};
 if (cekThemes.count === 0) {
   const insertTheme = db.prepare(`
     INSERT INTO themes (id, name, slug, description, is_builtin, is_active)
     VALUES (?, ?, ?, ?, ?, ?)
   `);
 
-  insertTheme.run('emerald-classic', 'Emerald Classic', 'emerald-classic', 'Tema hijau klasik dengan nuansa islami yang elegan', 1, 1);
-  insertTheme.run('sunset-warm', 'Sunset Warm', 'sunset-warm', 'Tema hangat untuk waktu Maghrib', 1, 1);
-  insertTheme.run('night-sky', 'Night Sky', 'night-sky', 'Tema malam dengan nuansa biru gelap', 1, 1);
-  insertTheme.run('minimalist-white', 'Minimalist White', 'minimalist-white', 'Tema minimalis putih bersih', 1, 1);
-  insertTheme.run('ramadan-kareem', 'Ramadan Kareem', 'ramadan-kareem', 'Tema spesial Ramadan', 1, 1);
+  insertTheme.run(
+    "emerald-classic",
+    "Emerald Classic",
+    "emerald-classic",
+    "Tema hijau klasik dengan nuansa islami yang elegan",
+    1,
+    1,
+  );
+  insertTheme.run(
+    "sunset-warm",
+    "Sunset Warm",
+    "sunset-warm",
+    "Tema hangat untuk waktu Maghrib",
+    1,
+    1,
+  );
+  insertTheme.run(
+    "night-sky",
+    "Night Sky",
+    "night-sky",
+    "Tema malam dengan nuansa biru gelap",
+    1,
+    1,
+  );
+  insertTheme.run(
+    "minimalist-white",
+    "Minimalist White",
+    "minimalist-white",
+    "Tema minimalis putih bersih",
+    1,
+    1,
+  );
+  insertTheme.run(
+    "ramadan-kareem",
+    "Ramadan Kareem",
+    "ramadan-kareem",
+    "Tema spesial Ramadan",
+    1,
+    1,
+  );
 
   console.log("✅ Data tema default berhasil dimasukkan!");
 }
 
 // Seeder Theme Settings
-const cekThemeSettings = db.prepare("SELECT count(*) as count FROM theme_settings").get() as { count: number };
+const cekThemeSettings = db
+  .prepare("SELECT count(*) as count FROM theme_settings")
+  .get() as { count: number };
 if (cekThemeSettings.count === 0) {
   const insertSetting = db.prepare(`
     INSERT INTO theme_settings (theme_id, primary_color, secondary_color, accent_color, text_color, bg_type, bg_gradient, layout_type)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  insertSetting.run('emerald-classic', '#1B5E20', '#2E7D32', '#FFD700', '#FFFFFF', 'gradient', 'linear-gradient(135deg, #1B5E20 0%, #0D3B0D 50%, #1B5E20 100%)', 'classic');
-  insertSetting.run('sunset-warm', '#E65100', '#FF8F00', '#FFE082', '#FFFFFF', 'gradient', 'linear-gradient(180deg, #FF6F00 0%, #E65100 50%, #BF360C 100%)', 'classic');
-  insertSetting.run('night-sky', '#1A237E', '#303F9F', '#FFD54F', '#FFFFFF', 'gradient', 'linear-gradient(180deg, #0D1B2A 0%, #1B263B 50%, #415A77 100%)', 'modern');
+  insertSetting.run(
+    "emerald-classic",
+    "#1B5E20",
+    "#2E7D32",
+    "#FFD700",
+    "#FFFFFF",
+    "gradient",
+    "linear-gradient(135deg, #1B5E20 0%, #0D3B0D 50%, #1B5E20 100%)",
+    "classic",
+  );
+  insertSetting.run(
+    "sunset-warm",
+    "#E65100",
+    "#FF8F00",
+    "#FFE082",
+    "#FFFFFF",
+    "gradient",
+    "linear-gradient(180deg, #FF6F00 0%, #E65100 50%, #BF360C 100%)",
+    "classic",
+  );
+  insertSetting.run(
+    "night-sky",
+    "#1A237E",
+    "#303F9F",
+    "#FFD54F",
+    "#FFFFFF",
+    "gradient",
+    "linear-gradient(180deg, #0D1B2A 0%, #1B263B 50%, #415A77 100%)",
+    "modern",
+  );
 
   console.log("✅ Data pengaturan tema default berhasil dimasukkan!");
 }
@@ -686,6 +807,81 @@ app.put("/api/prayer-settings", async (c) => {
 });
 
 // ============================================
+// 9b. Routes - Adzan Settings
+// ============================================
+app.get("/api/adzan-settings", (c) => {
+  const stmt = db.prepare("SELECT * FROM adzan_settings LIMIT 1");
+  const row = stmt.get() as Record<string, unknown> | undefined;
+
+  if (!row) {
+    return c.json(null);
+  }
+
+  // Convert to camelCase for frontend
+  return c.json({
+    enabled: !!row.enabled,
+    volume: row.volume,
+    useSubuhAdzan: !!row.use_subuh_adzan,
+    tarhimEnabled: !!row.tarhim_enabled,
+    tarhimMinutesBeforeImsak: row.tarhim_minutes_before_imsak,
+    cautionEnabled: !!row.caution_enabled,
+    cautionSecondsBeforeAdzan: row.caution_seconds_before_adzan,
+    cautionSecondsBeforeImsak: row.caution_seconds_before_imsak,
+    enabledPrayers: {
+      imsak: !!row.enabled_imsak,
+      subuh: !!row.enabled_subuh,
+      dzuhur: !!row.enabled_dzuhur,
+      ashar: !!row.enabled_ashar,
+      maghrib: !!row.enabled_maghrib,
+      isya: !!row.enabled_isya,
+    },
+  });
+});
+
+app.put("/api/adzan-settings", async (c) => {
+  const body = await c.req.json();
+
+  const stmt = db.prepare(`
+    UPDATE adzan_settings SET
+      enabled = ?,
+      volume = ?,
+      use_subuh_adzan = ?,
+      tarhim_enabled = ?,
+      tarhim_minutes_before_imsak = ?,
+      caution_enabled = ?,
+      caution_seconds_before_adzan = ?,
+      caution_seconds_before_imsak = ?,
+      enabled_imsak = ?,
+      enabled_subuh = ?,
+      enabled_dzuhur = ?,
+      enabled_ashar = ?,
+      enabled_maghrib = ?,
+      enabled_isya = ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = 1
+  `);
+
+  stmt.run(
+    body.enabled ? 1 : 0,
+    body.volume || 80,
+    body.useSubuhAdzan ? 1 : 0,
+    body.tarhimEnabled ? 1 : 0,
+    body.tarhimMinutesBeforeImsak || 0,
+    body.cautionEnabled ? 1 : 0,
+    body.cautionSecondsBeforeAdzan || 60,
+    body.cautionSecondsBeforeImsak || 60,
+    body.enabledPrayers?.imsak ? 1 : 0,
+    body.enabledPrayers?.subuh ? 1 : 0,
+    body.enabledPrayers?.dzuhur ? 1 : 0,
+    body.enabledPrayers?.ashar ? 1 : 0,
+    body.enabledPrayers?.maghrib ? 1 : 0,
+    body.enabledPrayers?.isya ? 1 : 0,
+  );
+
+  return c.json({ success: true });
+});
+
+// ============================================
 // 10. Routes - System Events
 // ============================================
 app.get("/api/system-events", (c) => {
@@ -819,7 +1015,10 @@ app.get("/api/theme-settings", (c) => {
     const stmt = db.prepare(query);
     return c.json(stmt.all(...params));
   } catch (error) {
-    return c.json({ success: false, error: "Failed to fetch theme settings" }, 500);
+    return c.json(
+      { success: false, error: "Failed to fetch theme settings" },
+      500,
+    );
   }
 });
 
@@ -845,7 +1044,10 @@ app.get("/api/theme-schedules", (c) => {
     const stmt = db.prepare(query);
     return c.json(stmt.all(...params));
   } catch (error) {
-    return c.json({ success: false, error: "Failed to fetch theme schedules" }, 500);
+    return c.json(
+      { success: false, error: "Failed to fetch theme schedules" },
+      500,
+    );
   }
 });
 
@@ -1163,7 +1365,8 @@ app.get("/uploads/*", async (c) => {
 // ============================================
 // 13. Sinkronisasi dengan Remote (Cloudflare)
 // ============================================
-const REMOTE_API_URL = process.env.REMOTE_API_URL || "https://mosque-display-api.adzan.workers.dev";
+const REMOTE_API_URL =
+  process.env.REMOTE_API_URL || "https://mosque-display-api.adzan.workers.dev";
 
 async function pullFromRemote() {
   console.log("🔄 Memulai sinkronisasi dari remote...");
@@ -1171,26 +1374,43 @@ async function pullFromRemote() {
     const response = await fetch(`${REMOTE_API_URL}/api/sync/pull`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-    const result = await response.json() as any;
+    const result = (await response.json()) as any;
     if (!result.success || !result.data) return;
 
-    const { mosqueSettings, prayerSettings, announcements, displayContent } = result.data;
+    const { mosqueSettings, prayerSettings, announcements, displayContent } =
+      result.data;
 
     // 1. Sync Mosque Settings
     if (mosqueSettings) {
-      const existing = db.prepare("SELECT id FROM mosque_settings LIMIT 1").get() as any;
+      const existing = db
+        .prepare("SELECT id FROM mosque_settings LIMIT 1")
+        .get() as any;
       if (existing) {
-        db.prepare(`
+        db.prepare(
+          `
           UPDATE mosque_settings SET
             name = ?, type = ?, street = ?, village = ?, district = ?, city = ?, province = ?,
             postal_code = ?, country = ?, latitude = ?, longitude = ?, timezone = ?, phone = ?, email = ?,
             theme_id = ?, updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
-        `).run(
-          mosqueSettings.name, mosqueSettings.type, mosqueSettings.street, mosqueSettings.village,
-          mosqueSettings.district, mosqueSettings.city, mosqueSettings.province, mosqueSettings.postal_code,
-          mosqueSettings.country, mosqueSettings.latitude, mosqueSettings.longitude, mosqueSettings.timezone,
-          mosqueSettings.phone, mosqueSettings.email, mosqueSettings.theme_id, existing.id
+        `,
+        ).run(
+          mosqueSettings.name,
+          mosqueSettings.type,
+          mosqueSettings.street,
+          mosqueSettings.village,
+          mosqueSettings.district,
+          mosqueSettings.city,
+          mosqueSettings.province,
+          mosqueSettings.postal_code,
+          mosqueSettings.country,
+          mosqueSettings.latitude,
+          mosqueSettings.longitude,
+          mosqueSettings.timezone,
+          mosqueSettings.phone,
+          mosqueSettings.email,
+          mosqueSettings.theme_id,
+          existing.id,
         );
       }
     }
@@ -1203,7 +1423,14 @@ async function pullFromRemote() {
         VALUES (?, ?, ?, ?, ?, ?)
       `);
       for (const ann of announcements) {
-        insertAnn.run(ann.title, ann.content, ann.type, ann.is_active, ann.start_date, ann.end_date);
+        insertAnn.run(
+          ann.title,
+          ann.content,
+          ann.type,
+          ann.is_active,
+          ann.start_date,
+          ann.end_date,
+        );
       }
     }
 
@@ -1215,13 +1442,24 @@ async function pullFromRemote() {
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
       for (const disp of displayContent) {
-        insertDisp.run(disp.content_type, disp.title, disp.content, disp.media_url, disp.display_order, disp.duration_seconds, disp.is_active);
+        insertDisp.run(
+          disp.content_type,
+          disp.title,
+          disp.content,
+          disp.media_url,
+          disp.display_order,
+          disp.duration_seconds,
+          disp.is_active,
+        );
       }
     }
 
     console.log("✅ Sinkronisasi remote berhasil!");
   } catch (error: any) {
-    console.warn("⚠️ Sinkronisasi remote gagal (Mungkin offline):", error.message);
+    console.warn(
+      "⚠️ Sinkronisasi remote gagal (Mungkin offline):",
+      error.message,
+    );
   }
 }
 
@@ -1235,10 +1473,14 @@ async function pushToRemote(endpoint: string, method: string, data: any) {
     if (response.ok) {
       console.log(`🚀 Data berhasil di-push ke remote: ${endpoint}`);
     } else {
-      console.warn(`⚠️ Gagal push ke remote: ${endpoint} (Status: ${response.status})`);
+      console.warn(
+        `⚠️ Gagal push ke remote: ${endpoint} (Status: ${response.status})`,
+      );
     }
   } catch (error: any) {
-    console.warn(`⚠️ Cloudflare sedang tidak bisa dijangkau, data tersimpan di Lokal saja.`);
+    console.warn(
+      `⚠️ Cloudflare sedang tidak bisa dijangkau, data tersimpan di Lokal saja.`,
+    );
   }
 }
 
