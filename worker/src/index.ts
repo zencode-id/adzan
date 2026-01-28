@@ -547,6 +547,131 @@ app.post("/api/system-events", async (c) => {
 });
 
 // ============================================
+// Routes - Adzan Settings
+// ============================================
+app.get("/api/adzan-settings", async (c) => {
+  try {
+    const row = await c.env.DB.prepare(
+      "SELECT * FROM adzan_settings LIMIT 1",
+    ).first();
+
+    if (!row) {
+      return c.json(null);
+    }
+
+    // Convert to camelCase for frontend
+    return c.json({
+      enabled: !!row.enabled,
+      volume: row.volume,
+      useSubuhAdzan: !!row.use_subuh_adzan,
+      tarhimEnabled: !!row.tarhim_enabled,
+      tarhimMinutesBeforeImsak: row.tarhim_minutes_before_imsak,
+      cautionEnabled: !!row.caution_enabled,
+      cautionSecondsBeforeAdzan: row.caution_seconds_before_adzan,
+      cautionSecondsBeforeImsak: row.caution_seconds_before_imsak,
+      enabledPrayers: {
+        imsak: !!row.enabled_imsak,
+        subuh: !!row.enabled_subuh,
+        dzuhur: !!row.enabled_dzuhur,
+        ashar: !!row.enabled_ashar,
+        maghrib: !!row.enabled_maghrib,
+        isya: !!row.enabled_isya,
+      },
+    });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to fetch adzan settings" },
+      500,
+    );
+  }
+});
+
+app.put("/api/adzan-settings", async (c) => {
+  try {
+    const body = await c.req.json();
+
+    // Check if row exists
+    const existing = await c.env.DB.prepare(
+      "SELECT id FROM adzan_settings LIMIT 1",
+    ).first();
+
+    if (!existing) {
+      // Insert new row
+      await c.env.DB.prepare(
+        `INSERT INTO adzan_settings (
+          enabled, volume, use_subuh_adzan, tarhim_enabled, tarhim_minutes_before_imsak,
+          caution_enabled, caution_seconds_before_adzan, caution_seconds_before_imsak,
+          enabled_imsak, enabled_subuh, enabled_dzuhur, enabled_ashar, enabled_maghrib, enabled_isya
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+        .bind(
+          body.enabled ? 1 : 0,
+          body.volume || 80,
+          body.useSubuhAdzan ? 1 : 0,
+          body.tarhimEnabled ? 1 : 0,
+          body.tarhimMinutesBeforeImsak || 0,
+          body.cautionEnabled ? 1 : 0,
+          body.cautionSecondsBeforeAdzan || 60,
+          body.cautionSecondsBeforeImsak || 60,
+          body.enabledPrayers?.imsak ? 1 : 0,
+          body.enabledPrayers?.subuh ? 1 : 0,
+          body.enabledPrayers?.dzuhur ? 1 : 0,
+          body.enabledPrayers?.ashar ? 1 : 0,
+          body.enabledPrayers?.maghrib ? 1 : 0,
+          body.enabledPrayers?.isya ? 1 : 0,
+        )
+        .run();
+    } else {
+      // Update existing row
+      await c.env.DB.prepare(
+        `UPDATE adzan_settings SET
+          enabled = ?,
+          volume = ?,
+          use_subuh_adzan = ?,
+          tarhim_enabled = ?,
+          tarhim_minutes_before_imsak = ?,
+          caution_enabled = ?,
+          caution_seconds_before_adzan = ?,
+          caution_seconds_before_imsak = ?,
+          enabled_imsak = ?,
+          enabled_subuh = ?,
+          enabled_dzuhur = ?,
+          enabled_ashar = ?,
+          enabled_maghrib = ?,
+          enabled_isya = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = 1`,
+      )
+        .bind(
+          body.enabled ? 1 : 0,
+          body.volume || 80,
+          body.useSubuhAdzan ? 1 : 0,
+          body.tarhimEnabled ? 1 : 0,
+          body.tarhimMinutesBeforeImsak || 0,
+          body.cautionEnabled ? 1 : 0,
+          body.cautionSecondsBeforeAdzan || 60,
+          body.cautionSecondsBeforeImsak || 60,
+          body.enabledPrayers?.imsak ? 1 : 0,
+          body.enabledPrayers?.subuh ? 1 : 0,
+          body.enabledPrayers?.dzuhur ? 1 : 0,
+          body.enabledPrayers?.ashar ? 1 : 0,
+          body.enabledPrayers?.maghrib ? 1 : 0,
+          body.enabledPrayers?.isya ? 1 : 0,
+        )
+        .run();
+    }
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error("Failed to update adzan settings:", error);
+    return c.json(
+      { success: false, error: "Failed to update adzan settings" },
+      500,
+    );
+  }
+});
+
+// ============================================
 // Routes - Theme Assets
 // ============================================
 
@@ -709,10 +834,15 @@ app.get("/api/theme-settings", async (c) => {
       params.push(themeId);
     }
 
-    const result = await c.env.DB.prepare(query).bind(...params).all();
+    const result = await c.env.DB.prepare(query)
+      .bind(...params)
+      .all();
     return c.json(result.results);
   } catch (error) {
-    return c.json({ success: false, error: "Failed to fetch theme settings" }, 500);
+    return c.json(
+      { success: false, error: "Failed to fetch theme settings" },
+      500,
+    );
   }
 });
 
@@ -735,10 +865,15 @@ app.get("/api/theme-schedules", async (c) => {
 
     query += " ORDER BY priority DESC";
 
-    const result = await c.env.DB.prepare(query).bind(...params).all();
+    const result = await c.env.DB.prepare(query)
+      .bind(...params)
+      .all();
     return c.json(result.results);
   } catch (error) {
-    return c.json({ success: false, error: "Failed to fetch theme schedules" }, 500);
+    return c.json(
+      { success: false, error: "Failed to fetch theme schedules" },
+      500,
+    );
   }
 });
 
