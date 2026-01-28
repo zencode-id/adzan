@@ -164,18 +164,38 @@ function App() {
   };
 
   // Format timestamp helper - defined before use
+  // Database stores UTC time, need to convert to local timezone
   const formatTimestamp = (dateString: string): string => {
-    const date = new Date(dateString);
+    // Parse as UTC if no timezone indicator present
+    let date: Date;
+    if (
+      dateString.includes("Z") ||
+      dateString.includes("+") ||
+      dateString.includes("-")
+    ) {
+      date = new Date(dateString);
+    } else {
+      // Assume UTC if no timezone
+      date = new Date(dateString + "Z");
+    }
+
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+    // Display in local timezone (id-ID for Indonesian)
+    const timeStr = date.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+
     if (diffDays === 0) {
-      return `Today, ${date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
+      return `Hari ini, ${timeStr}`;
     } else if (diffDays === 1) {
-      return `Yesterday, ${date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
+      return `Kemarin, ${timeStr}`;
     } else {
-      return `${diffDays} days ago`;
+      return `${diffDays} hari lalu`;
     }
   };
 
