@@ -13,7 +13,7 @@ import {
   ThemeScheduleManager,
   ThemeAssetGallery,
   HijriCalendar,
-  AdzanControl,
+  AdzanSettings,
 } from "./components/dashboard";
 import type { ScheduleFormData } from "./components/dashboard/ThemeScheduleManager";
 import { useAdzan } from "./hooks/useAdzan";
@@ -58,7 +58,7 @@ interface SystemEvent {
   type: "success" | "info" | "warning" | "error";
 }
 
-// Wrapper component for AdzanControl with useAdzan hook
+// Wrapper component for AdzanSettings with useAdzan hook
 function AdzanControlWrapper({
   latitude,
   longitude,
@@ -66,28 +66,23 @@ function AdzanControlWrapper({
   latitude: number;
   longitude: number;
 }) {
-  const { state, settings, playAdzan, stopAdzan, setVolume, toggleEnabled } =
-    useAdzan({
-      prayerSettings: {
-        latitude,
-        longitude,
-        calculationMethod: "Kemenag",
-      },
-      autoStart: true,
-    });
+  const { state, playAdzan, stopAdzan } = useAdzan({
+    prayerSettings: {
+      latitude,
+      longitude,
+      calculationMethod: "Kemenag",
+    },
+    autoStart: true,
+  });
 
   return (
-    <AdzanControl
-      isEnabled={settings.enabled}
+    <AdzanSettings
       isPlaying={state.isPlaying}
-      volume={settings.volume}
       countdown={state.countdown}
       nextPrayer={state.nextPrayer}
       currentPrayer={state.currentPrayer}
-      onToggleEnabled={toggleEnabled}
       onPlay={playAdzan}
       onStop={stopAdzan}
-      onVolumeChange={setVolume}
     />
   );
 }
