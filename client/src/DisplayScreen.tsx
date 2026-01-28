@@ -1,5 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { mosqueApi, type MosqueInfo } from "./lib/api";
+import {
+  mosqueApi,
+  displayContentApi,
+  type MosqueInfo,
+  type DisplayContent,
+} from "./lib/api";
 import { getThemeById } from "./lib/themes";
 import {
   calculatePrayerTimes,
@@ -8,10 +13,15 @@ import {
 } from "./lib/prayerTimes";
 import { toHijri } from "./lib/hijriCalendar";
 import { useAdzan } from "./hooks/useAdzan";
+import { RunningTicker, ContentSlideshow } from "./components/display";
 
 export function DisplayScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [mosqueInfo, setMosqueInfo] = useState<MosqueInfo | null>(null);
+  const [displayContents, setDisplayContents] = useState<DisplayContent[]>([]);
+  const [displayMode, setDisplayMode] = useState<"prayer" | "content">(
+    "prayer",
+  );
 
   // Get current theme
   const theme = useMemo(() => getThemeById(mosqueInfo?.themeId), [mosqueInfo]);
@@ -32,6 +42,44 @@ export function DisplayScreen() {
     };
     fetchMosque();
   }, []);
+
+  // Fetch display contents
+  useEffect(() => {
+    const fetchContents = async () => {
+      const contents = await displayContentApi.getAll();
+      setDisplayContents(contents.filter((c) => c.is_active));
+    };
+    fetchContents();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchContents, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle display mode rotation
+  useEffect(() => {
+    if (displayContents.length === 0) {
+      if (displayMode !== "prayer") {
+        setTimeout(() => setDisplayMode("prayer"), 0);
+      }
+      return;
+    }
+
+    const PRAYER_DISPLAY_DURATION = 180 * 1000; // 3 minutes
+    const totalContentDuration =
+      displayContents.reduce(
+        (acc, curr) => acc + (curr.duration_seconds || 10),
+        0,
+      ) * 1000;
+
+    const timer = setTimeout(
+      () => {
+        setDisplayMode((prev) => (prev === "prayer" ? "content" : "prayer"));
+      },
+      displayMode === "prayer" ? PRAYER_DISPLAY_DURATION : totalContentDuration,
+    );
+
+    return () => clearTimeout(timer);
+  }, [displayMode, displayContents]);
 
   // Parse coordinates for adzan
   const lat = mosqueInfo ? parseFloat(mosqueInfo.coordinates.latitude) : 0;
@@ -187,6 +235,16 @@ export function DisplayScreen() {
       className="min-h-screen text-white overflow-hidden relative transition-colors duration-1000"
       style={{ backgroundColor: theme.colors.bg }}
     >
+      {/* Fullscreen Content Mode */}
+      {displayMode === "content" && displayContents.length > 0 && (
+        <div className="absolute inset-0 z-50 bg-black">
+          <ContentSlideshow
+            contents={displayContents}
+            className="w-full h-full"
+          />
+        </div>
+      )}
+
       {/* Dynamic Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div
@@ -318,6 +376,18 @@ export function DisplayScreen() {
                 {mosqueInfo.coordinates.longitude}
               </span>
             </div>
+
+            {/* Media Slideshow */}
+            {displayContents.filter(
+              (c) => c.content_type === "image" || c.content_type === "video",
+            ).length > 0 && (
+              <div className="mt-6">
+                <ContentSlideshow
+                  contents={displayContents}
+                  className="rounded-2xl h-40 overflow-hidden"
+                />
+              </div>
+            )}
           </div>
 
           {/* Right - Prayer Times Grid */}
@@ -658,51 +728,20 @@ export function DisplayScreen() {
             className="rounded-2xl py-3 px-6 overflow-hidden transition-colors duration-500"
             style={{ backgroundColor: theme.colors.primary }}
           >
-            <div className="animate-marquee whitespace-nowrap">
-              <span
-                className="font-semibold mx-8"
-                style={{ color: theme.colors.bg }}
-              >
-                🕌 Selamat Datang di {mosqueInfo.name}
-              </span>
-              <span
-                className="mx-8 opacity-50"
-                style={{ color: theme.colors.bg }}
-              >
-                •
-              </span>
-              <span
-                className="font-semibold mx-8"
-                style={{ color: theme.colors.bg }}
-              >
-                📍 {mosqueInfo.address.street}, {mosqueInfo.address.city}
-              </span>
-              <span
-                className="mx-8 opacity-50"
-                style={{ color: theme.colors.bg }}
-              >
-                •
-              </span>
-              <span
-                className="font-semibold mx-8"
-                style={{ color: theme.colors.bg }}
-              >
-                🌙 {toHijri(currentTime).day} {toHijri(currentTime).monthName}{" "}
-                {toHijri(currentTime).year} H
-              </span>
-              <span
-                className="mx-8 opacity-50"
-                style={{ color: theme.colors.bg }}
-              >
-                •
-              </span>
-              <span
-                className="font-semibold mx-8"
-                style={{ color: theme.colors.bg }}
-              >
-                ☎️ {mosqueInfo.phone || "Hubungi Takmir"}
-              </span>
-            </div>
+            <RunningTicker
+              messages={[
+                `Selamat Datang di ${mosqueInfo.name}`,
+                `${mosqueInfo.address.street}, ${mosqueInfo.address.city}`,
+                `🌙 ${toHijri(currentTime).day} ${toHijri(currentTime).monthName} ${toHijri(currentTime).year} H`,
+                `☎️ ${mosqueInfo.phone || "Hubungi Takmir"}`,
+                ...displayContents
+                  .filter((c) => c.content_type === "text")
+                  .map((c) => c.title + (c.content ? `: ${c.content}` : "")),
+              ]}
+              className="font-semibold text-lg"
+              speed={60}
+              style={{ color: theme.colors.bg }}
+            />
           </div>
         </footer>
       </div>

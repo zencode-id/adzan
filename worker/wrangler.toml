@@ -8,9 +8,18 @@ binding = "DB"
 database_name = "mosque-db"
 database_id = "40580833-7999-4768-a230-4084ed1d3949"
 
+# R2 Storage Binding
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "adzan"
+
 # Environment Variables
 [vars]
 ENVIRONMENT = "production"
+# Set this to your R2 bucket's public URL (after enabling public access)
+# Format: https://<account-id>.r2.cloudflarestorage.com/<bucket-name>
+# Or if using custom domain: https://assets.yourdomain.com
+R2_PUBLIC_URL = "https://pub-52b6ebf43f6e4deea2d86083eb914a81.r2.dev"
 
 # Development settings
 [dev]

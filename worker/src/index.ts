@@ -6,6 +6,8 @@ import { cors } from "hono/cors";
 // ============================================
 type Bindings = {
   DB: D1Database;
+  R2_BUCKET: R2Bucket;
+  R2_PUBLIC_URL: string;
   ENVIRONMENT: string;
 };
 
@@ -1034,29 +1036,6 @@ app.get("/api/theme-schedules", async (c) => {
 });
 
 // ============================================
-
-// Routes - File Upload (Placeholder for workers)
-// ============================================
-
-// Upload file
-app.post("/api/upload", async (c) => {
-  // Cloudflare Workers requires R2 or another external storage for file uploads
-  // If R2 is not configured, we return an error or handle accordingly
-  return c.json(
-    {
-      success: false,
-      error: "R2 Storage not configured on worker. Please setup Cloudflare R2.",
-    },
-    501,
-  );
-});
-
-// List uploaded files
-app.get("/api/upload", async (c) => {
-  return c.json({ files: [] });
-});
-
-// ============================================
 // Routes - Sync (for offline-first)
 // ============================================
 app.post("/api/sync/push", async (c) => {
@@ -1122,6 +1101,157 @@ app.get("/api/sync/status", async (c) => {
     });
   } catch (error) {
     return c.json({ status: "error", error: "Database unreachable" }, 500);
+  }
+});
+
+// ============================================
+// Routes - File Upload (R2)
+// ============================================
+
+// Upload file to R2
+app.post("/api/upload", async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get("file") as File | null;
+
+    if (!file) {
+      return c.json({ success: false, error: "No file provided" }, 400);
+    }
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return c.json(
+        { success: false, error: "File too large (max 10MB)" },
+        400,
+      );
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "video/mp4",
+      "video/webm",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      return c.json({ success: false, error: "Invalid file type" }, 400);
+    }
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const extension = file.name.split(".").pop() || "bin";
+    const key = `uploads/${timestamp}-${randomStr}.${extension}`;
+
+    // Upload to R2
+    await c.env.R2_BUCKET.put(key, file.stream(), {
+      httpMetadata: {
+        contentType: file.type,
+      },
+    });
+
+    // Generate public URL
+    // Use R2_PUBLIC_URL if configured, otherwise use API endpoint for serving
+    const baseUrl = c.env.R2_PUBLIC_URL
+      ? c.env.R2_PUBLIC_URL.replace(/\/$/, "")
+      : `${new URL(c.req.url).origin}/api/files`;
+    const publicUrl = `${baseUrl}/${key}`;
+
+    // Log event
+    await c.env.DB.prepare(
+      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)",
+    )
+      .bind(
+        "File uploaded",
+        `File: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`,
+        "success",
+      )
+      .run();
+
+    return c.json({
+      success: true,
+      key,
+      url: publicUrl,
+      fileName: file.name,
+      fileSize: file.size,
+      mimeType: file.type,
+    });
+  } catch (error: any) {
+    console.error("Upload error:", error);
+    return c.json(
+      { success: false, error: "Upload failed", message: error.message },
+      500,
+    );
+  }
+});
+
+// Delete file from R2
+app.delete("/api/upload/:key", async (c) => {
+  try {
+    const key = c.req.param("key");
+    const fullKey = key.startsWith("uploads/") ? key : `uploads/${key}`;
+
+    await c.env.R2_BUCKET.delete(fullKey);
+
+    // Log event
+    await c.env.DB.prepare(
+      "INSERT INTO system_events (title, description, event_type) VALUES (?, ?, ?)",
+    )
+      .bind("File deleted", `Key: ${fullKey}`, "warning")
+      .run();
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    return c.json({ success: false, error: "Delete failed" }, 500);
+  }
+});
+
+// Serve file from R2 (for private access or custom serving)
+app.get("/api/files/:key", async (c) => {
+  try {
+    const key = c.req.param("key");
+    const fullKey = key.startsWith("uploads/") ? key : `uploads/${key}`;
+
+    const object = await c.env.R2_BUCKET.get(fullKey);
+
+    if (!object) {
+      return c.json({ error: "File not found" }, 404);
+    }
+
+    const headers = new Headers();
+    headers.set(
+      "Content-Type",
+      object.httpMetadata?.contentType || "application/octet-stream",
+    );
+    headers.set("Cache-Control", "public, max-age=86400");
+    headers.set("ETag", object.httpEtag);
+
+    return new Response(object.body, { headers });
+  } catch (error: any) {
+    return c.json({ error: "Failed to retrieve file" }, 500);
+  }
+});
+
+// List files in R2 bucket
+app.get("/api/files", async (c) => {
+  try {
+    const prefix = c.req.query("prefix") || "uploads/";
+    const limit = parseInt(c.req.query("limit") || "50");
+
+    const listed = await c.env.R2_BUCKET.list({ prefix, limit });
+
+    const files = listed.objects.map((obj) => ({
+      key: obj.key,
+      size: obj.size,
+      uploaded: obj.uploaded,
+    }));
+
+    return c.json({ files, truncated: listed.truncated });
+  } catch (error: any) {
+    return c.json({ success: false, error: "Failed to list files" }, 500);
   }
 });
 
