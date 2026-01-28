@@ -20,7 +20,7 @@ export function RoyalLayout({
   const { colors } = theme;
 
   // Format hijri date string
-  const hijriDateString = `${hijriDate.monthName} ${hijriDate.year} H`;
+  const hijriDateString = `${hijriDate.day} ${hijriDate.monthName} ${hijriDate.year} H`;
 
   // Left side prayers
   const leftPrayers = [
@@ -28,41 +28,53 @@ export function RoyalLayout({
       name: "Imsak",
       time: prayerTimes.imsak,
       icon: "wb_twilight",
-      position: "top-[10%] left-[10%]",
+      position: "top-[5%] left-[10%]",
     },
     {
       name: "Subuh",
       time: prayerTimes.subuh,
       icon: "wb_sunny",
-      position: "top-[40%] left-[2%]",
+      position: "top-[30%] left-[2%]",
     },
     {
-      name: "Dzuhur",
-      time: prayerTimes.dzuhur,
-      icon: "light_mode",
-      position: "bottom-[15%] left-[10%]",
+      name: "Terbit",
+      time: prayerTimes.terbit,
+      icon: "wb_sunny",
+      position: "bottom-[30%] left-[2%]",
+    },
+    {
+      name: "Dhuha",
+      time: prayerTimes.dhuha,
+      icon: "sunny",
+      position: "bottom-[5%] left-[10%]",
     },
   ];
 
   // Right side prayers
   const rightPrayers = [
     {
+      name: "Dzuhur",
+      time: prayerTimes.dzuhur,
+      icon: "light_mode",
+      position: "top-[5%] right-[10%]",
+    },
+    {
       name: "Ashar",
       time: prayerTimes.ashar,
       icon: "wb_cloudy",
-      position: "top-[10%] right-[10%]",
+      position: "top-[30%] right-[2%]",
     },
     {
       name: "Maghrib",
       time: prayerTimes.maghrib,
       icon: "nights_stay",
-      position: "top-[40%] right-[2%]",
+      position: "bottom-[30%] right-[2%]",
     },
     {
       name: "Isya",
       time: prayerTimes.isya,
       icon: "dark_mode",
-      position: "bottom-[15%] right-[10%]",
+      position: "bottom-[5%] right-[10%]",
     },
   ];
 

@@ -21,9 +21,9 @@ export function DigitalLayout({
   const { colors } = theme;
 
   // Format hijri date string
-  const hijriDateString = `${hijriDate.monthName} ${hijriDate.year} H`;
+  const hijriDateString = `${hijriDate.day} ${hijriDate.monthName} ${hijriDate.year} H`;
 
-  // Prayer times grid (6 prayers for the grid)
+  // Prayer times grid (All 8 prayers)
   const prayerCards = [
     {
       name: "Imsak",
@@ -36,6 +36,18 @@ export function DigitalLayout({
       time: prayerTimes.subuh,
       icon: "wb_sunny",
       isNext: nextPrayer?.name === "Subuh",
+    },
+    {
+      name: "Terbit",
+      time: prayerTimes.terbit,
+      icon: "wb_sunny",
+      isNext: nextPrayer?.name === "Terbit",
+    },
+    {
+      name: "Dhuha",
+      time: prayerTimes.dhuha,
+      icon: "sunny",
+      isNext: nextPrayer?.name === "Dhuha",
     },
     {
       name: "Dzuhur",
@@ -211,7 +223,7 @@ export function DigitalLayout({
 
           {/* Prayer Times Grid */}
           <div
-            className={`${nextPrayer ? "md:col-span-2" : "md:col-span-3"} grid grid-cols-3 gap-4`}
+            className={`${nextPrayer ? "md:col-span-2" : "md:col-span-3"} grid grid-cols-2 md:grid-cols-4 gap-4`}
           >
             {prayerCards.map((prayer) => (
               <div
