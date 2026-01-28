@@ -12,6 +12,7 @@ import type { PrayerSettingsInput, PrayerTimesResult } from "./prayerTimes";
 
 // Prayer names for adzan
 export const PRAYER_NAMES = {
+  imsak: "Imsak",
   subuh: "Subuh",
   dzuhur: "Dzuhur",
   ashar: "Ashar",
@@ -21,10 +22,22 @@ export const PRAYER_NAMES = {
 
 export type PrayerName = keyof typeof PRAYER_NAMES;
 
-// Adzan audio URLs (online sources as fallback)
+// Audio types
+export const AUDIO_TYPES = {
+  adzan: "adzan",
+  subuh: "adzan_subuh",
+  tarhim: "tarhim",
+} as const;
+
+// Audio URLs - local files take priority, fallback to online
+const LOCAL_AUDIO_BASE = "/audio/";
 const ADZAN_AUDIO_URLS = {
-  default: "https://www.islamcan.com/audio/adhan/azan1.mp3",
-  subuh: "https://www.islamcan.com/audio/adhan/azan1.mp3",
+  default: `${LOCAL_AUDIO_BASE}adzan.mp3`,
+  subuh: `${LOCAL_AUDIO_BASE}adzan_subuh.mp3`,
+  tarhim: `${LOCAL_AUDIO_BASE}tarhim.mp3`,
+  // Online fallbacks
+  fallback_default: "https://www.islamcan.com/audio/adhan/azan1.mp3",
+  fallback_subuh: "https://www.islamcan.com/audio/adhan/azan1.mp3",
 };
 
 export interface AdzanSettings {
@@ -34,14 +47,28 @@ export interface AdzanSettings {
   useSubuhAdzan: boolean; // Use different adzan for Subuh
   audioUrl?: string; // Custom audio URL
   subuhAudioUrl?: string; // Custom Subuh audio URL
+  // Shalawat Tarhim settings
+  tarhimEnabled: boolean;
+  tarhimAudioUrl?: string;
+  tarhimMinutesBeforeImsak: number; // Default: 0 = at Imsak time
+  // Caution/Warning time settings
+  cautionEnabled: boolean; // Enable warning countdown
+  cautionSecondsBeforeAdzan: number; // Seconds before adzan to show warning (e.g., 60 = 1 minute)
+  cautionSecondsBeforeImsak: number; // Seconds before imsak to show warning
 }
 
 export interface AdzanState {
   isPlaying: boolean;
   currentPrayer: string | null;
+  currentAudioType: string | null; // 'adzan' | 'tarhim'
   nextPrayer: { name: string; time: Date } | null;
   prayerTimes: PrayerTimesResult | null;
   countdown: string;
+  tarhimCountdown: string | null; // Countdown to tarhim
+  // Caution state
+  isCautionActive: boolean; // True when in caution period
+  cautionFor: string | null; // 'adzan' | 'imsak' | null
+  cautionCountdown: string | null; // Countdown during caution period (seconds)
 }
 
 // Default settings
@@ -49,6 +76,7 @@ export const DEFAULT_ADZAN_SETTINGS: AdzanSettings = {
   enabled: true,
   volume: 80,
   enabledPrayers: {
+    imsak: false, // Imsak doesn't play adzan, but tarhim
     subuh: true,
     dzuhur: true,
     ashar: true,
@@ -56,6 +84,12 @@ export const DEFAULT_ADZAN_SETTINGS: AdzanSettings = {
     isya: true,
   },
   useSubuhAdzan: true,
+  tarhimEnabled: true,
+  tarhimMinutesBeforeImsak: 0, // 0 = play at Imsak time
+  // Caution defaults
+  cautionEnabled: true,
+  cautionSecondsBeforeAdzan: 60, // 1 minute warning before adzan
+  cautionSecondsBeforeImsak: 60, // 1 minute warning before imsak
 };
 
 /**
@@ -106,12 +140,90 @@ export class AdzanService {
     const nextPrayer = getNextPrayer(now, this.prayerSettings);
     const currentPrayer = getCurrentPrayer(now, this.prayerSettings);
 
+    // Calculate tarhim countdown (time until X minutes before Imsak)
+    let tarhimCountdown: string | null = null;
+    if (this.settings.tarhimEnabled && prayerTimes.imsak) {
+      const [imsakHour, imsakMin] = prayerTimes.imsak.split(":").map(Number);
+      const imsakTime = new Date(now);
+      imsakTime.setHours(imsakHour, imsakMin, 0, 0);
+
+      // Tarhim time = Imsak - offset minutes
+      const tarhimTime = new Date(
+        imsakTime.getTime() -
+          this.settings.tarhimMinutesBeforeImsak * 60 * 1000,
+      );
+      const diff = tarhimTime.getTime() - now.getTime();
+
+      if (diff > 0) {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        tarhimCountdown = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      }
+    }
+
+    // Calculate caution state
+    let isCautionActive = false;
+    let cautionFor: string | null = null;
+    let cautionCountdown: string | null = null;
+
+    if (this.settings.cautionEnabled) {
+      // Check caution for Imsak
+      if (prayerTimes.imsak) {
+        const [imsakHour, imsakMin] = prayerTimes.imsak.split(":").map(Number);
+        const imsakTime = new Date(now);
+        imsakTime.setHours(imsakHour, imsakMin, 0, 0);
+        const diffToImsak = imsakTime.getTime() - now.getTime();
+
+        // If within caution window for imsak
+        if (
+          diffToImsak > 0 &&
+          diffToImsak <= this.settings.cautionSecondsBeforeImsak * 1000
+        ) {
+          isCautionActive = true;
+          cautionFor = "imsak";
+          const secs = Math.floor(diffToImsak / 1000);
+          const mins = Math.floor(secs / 60);
+          const remainSecs = secs % 60;
+          cautionCountdown = `${mins.toString().padStart(2, "0")}:${remainSecs.toString().padStart(2, "0")}`;
+        }
+      }
+
+      // Check caution for next adzan (if not already caution for imsak)
+      if (!isCautionActive && nextPrayer && nextPrayer.name !== "Imsak") {
+        const diffToAdzan = nextPrayer.time.getTime() - now.getTime();
+
+        // If within caution window for adzan
+        if (
+          diffToAdzan > 0 &&
+          diffToAdzan <= this.settings.cautionSecondsBeforeAdzan * 1000
+        ) {
+          isCautionActive = true;
+          cautionFor = "adzan";
+          const secs = Math.floor(diffToAdzan / 1000);
+          const mins = Math.floor(secs / 60);
+          const remainSecs = secs % 60;
+          cautionCountdown = `${mins.toString().padStart(2, "0")}:${remainSecs.toString().padStart(2, "0")}`;
+        }
+      }
+    }
+
     return {
       isPlaying: this.audioElement ? !this.audioElement.paused : false,
       currentPrayer,
+      currentAudioType:
+        this.audioElement && !this.audioElement.paused
+          ? this.audioElement.src.includes("tarhim")
+            ? "tarhim"
+            : "adzan"
+          : null,
       nextPrayer,
       prayerTimes,
       countdown: this.getCountdown(nextPrayer?.time),
+      tarhimCountdown,
+      isCautionActive,
+      cautionFor,
+      cautionCountdown,
     };
   }
 
@@ -169,6 +281,47 @@ export class AdzanService {
       this.notifyStateChange();
     } catch (error) {
       console.error("Failed to play adzan:", error);
+      // Try fallback URL if local file fails
+      if (audioUrl.startsWith(LOCAL_AUDIO_BASE)) {
+        const fallbackUrl = isSubuh
+          ? ADZAN_AUDIO_URLS.fallback_subuh
+          : ADZAN_AUDIO_URLS.fallback_default;
+        try {
+          this.audioElement.src = fallbackUrl;
+          await this.audioElement.play();
+          this.notifyStateChange();
+        } catch (fallbackError) {
+          console.error("Failed to play fallback adzan:", fallbackError);
+        }
+      }
+    }
+  }
+
+  /**
+   * Play Shalawat Tarhim audio (before Imsak)
+   */
+  public async playTarhim(): Promise<void> {
+    if (
+      !this.audioElement ||
+      !this.settings.enabled ||
+      !this.settings.tarhimEnabled
+    )
+      return;
+
+    const audioUrl = this.settings.tarhimAudioUrl || ADZAN_AUDIO_URLS.tarhim;
+
+    try {
+      this.audioElement.src = audioUrl;
+      this.audioElement.currentTime = 0;
+      await this.audioElement.play();
+
+      if (this.onAdzanCallback) {
+        this.onAdzanCallback("Shalawat Tarhim");
+      }
+
+      this.notifyStateChange();
+    } catch (error) {
+      console.error("Failed to play tarhim:", error);
     }
   }
 
@@ -253,7 +406,35 @@ export class AdzanService {
 
     const prayerTimes = calculatePrayerTimes(now, this.prayerSettings);
 
-    // Map prayer times to prayer names
+    // Check for Tarhim time (X minutes before Imsak)
+    if (this.settings.tarhimEnabled && prayerTimes.imsak) {
+      const [imsakHour, imsakMin] = prayerTimes.imsak.split(":").map(Number);
+      const imsakTime = new Date(now);
+      imsakTime.setHours(imsakHour, imsakMin, 0, 0);
+
+      // Calculate tarhim trigger time
+      const tarhimTime = new Date(
+        imsakTime.getTime() -
+          this.settings.tarhimMinutesBeforeImsak * 60 * 1000,
+      );
+      const tarhimTimeStr = tarhimTime.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+
+      // Play tarhim if current time matches
+      if (
+        currentTimeStr === tarhimTimeStr &&
+        this.lastPlayedPrayer !== `tarhim-${currentTimeStr}`
+      ) {
+        this.lastPlayedPrayer = `tarhim-${currentTimeStr}`;
+        this.playTarhim();
+        return; // Don't check for adzan if tarhim is playing
+      }
+    }
+
+    // Map prayer times to prayer names (excluding imsak - it uses tarhim)
     const timeTosPrayer: Record<string, PrayerName> = {
       [prayerTimes.subuh]: "subuh",
       [prayerTimes.dzuhur]: "dzuhur",

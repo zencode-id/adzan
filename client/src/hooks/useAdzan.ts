@@ -34,9 +34,14 @@ export function useAdzan(options: UseAdzanOptions): UseAdzanReturn {
   const [state, setState] = useState<AdzanState>({
     isPlaying: false,
     currentPrayer: null,
+    currentAudioType: null,
     nextPrayer: null,
     prayerTimes: null,
     countdown: "--:--:--",
+    tarhimCountdown: null,
+    isCautionActive: false,
+    cautionFor: null,
+    cautionCountdown: null,
   });
 
   const [settings, setSettings] = useState<AdzanSettings>({
