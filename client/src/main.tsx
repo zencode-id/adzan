@@ -1,5 +1,6 @@
 import { StrictMode, useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { Toaster } from "sonner";
 import "./index.css";
 import App from "./App.tsx";
 import { ThemedDisplay, AutoThemeProvider } from "./themes";
@@ -29,6 +30,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AutoThemeProvider defaultThemeId="emerald-classic">
       <Router />
+      <Toaster richColors position="top-center" />
     </AutoThemeProvider>
   </StrictMode>,
 );

@@ -16,6 +16,7 @@ import {
   AdzanSettings,
 } from "./components/dashboard";
 import type { ScheduleFormData } from "./components/dashboard/ThemeScheduleManager";
+import { toast } from "sonner";
 import { useAdzan } from "./hooks/useAdzan";
 import { useAutoTheme } from "./themes";
 import { systemEventsApi, mosqueApi, type MosqueInfo } from "./lib/api";
@@ -129,10 +130,10 @@ function App() {
       const updatedInfo = { ...mosqueInfo, themeId: selectedThemeId };
       await mosqueApi.update(updatedInfo);
       setMosqueInfo(updatedInfo);
-      alert("Tema berhasil disimpan!");
+      toast.success("Tema berhasil disimpan!");
     } catch (error) {
       console.error("Failed to save theme:", error);
-      alert("Gagal menyimpan tema.");
+      toast.error("Gagal menyimpan tema");
     } finally {
       setIsSavingTheme(false);
     }

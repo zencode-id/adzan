@@ -4,6 +4,7 @@
 // ============================================
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import {
   themeAssetsLocal,
   type LocalThemeAsset,
@@ -67,8 +68,10 @@ export function ThemeAssetGallery({
       }
       loadAssets();
       setDeleteConfirm(null);
+      toast.success("Asset berhasil dihapus");
     } catch (error) {
       console.error("Failed to delete asset:", error);
+      toast.error("Gagal menghapus asset");
     }
   };
 
@@ -78,8 +81,12 @@ export function ThemeAssetGallery({
         isActive: !asset.isActive,
       });
       loadAssets();
+      toast.success(
+        asset.isActive ? "Asset dinonaktifkan" : "Asset diaktifkan",
+      );
     } catch (error) {
       console.error("Failed to toggle asset:", error);
+      toast.error("Gagal mengubah status asset");
     }
   };
 

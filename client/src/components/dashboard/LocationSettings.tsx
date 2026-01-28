@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { mosqueApi, type MosqueInfo } from "../../lib/api";
 import {
   fetchProvinces,
@@ -192,8 +193,10 @@ export function LocationSettings({ onSave }: LocationSettingsProps) {
         setMosqueInfo(result.data);
         setIsEditing(false);
         onSave?.(result.data);
+        toast.success("Lokasi masjid berhasil disimpan");
       } else {
         setError("Gagal menyimpan perubahan");
+        toast.error("Gagal menyimpan lokasi");
       }
     } catch (err) {
       console.error("Failed to save mosque data:", err);

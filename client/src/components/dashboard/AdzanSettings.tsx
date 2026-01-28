@@ -11,6 +11,7 @@ import {
   Save,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { adzanSettingsApi, type AdzanSettingsData } from "../../lib/api";
 
 interface AdzanSettingsProps {
@@ -97,6 +98,9 @@ export function AdzanSettings({
     const result = await adzanSettingsApi.update(settings);
     if (result.success) {
       setHasChanges(false);
+      toast.success("Pengaturan adzan berhasil disimpan");
+    } else {
+      toast.error("Gagal menyimpan pengaturan");
     }
     setIsSaving(false);
   };
