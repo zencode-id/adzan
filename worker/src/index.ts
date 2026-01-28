@@ -1256,6 +1256,176 @@ app.get("/api/files", async (c) => {
 });
 
 // ============================================
+// Routes - Running Text
+// ============================================
+
+// Get all running text data (items + settings)
+app.get("/api/running-text", async (c) => {
+  try {
+    const items = await c.env.DB.prepare(
+      "SELECT * FROM running_text_items ORDER BY display_order ASC",
+    ).all();
+
+    const settings = await c.env.DB.prepare(
+      `SELECT 
+        show_running_text,
+        running_text_speed,
+        running_text_bg_color,
+        running_text_text_color,
+        running_text_font_size,
+        running_text_font_family,
+        running_text_spacing,
+        running_text_separator
+      FROM theme_settings LIMIT 1`,
+    ).first();
+
+    return c.json({ items: items.results, settings });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to fetch running text data" },
+      500,
+    );
+  }
+});
+
+// Get running text items only
+app.get("/api/running-text/items", async (c) => {
+  try {
+    const items = await c.env.DB.prepare(
+      "SELECT * FROM running_text_items ORDER BY display_order ASC",
+    ).all();
+    return c.json(items.results);
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to fetch running text items" },
+      500,
+    );
+  }
+});
+
+// Add new running text item
+app.post("/api/running-text/items", async (c) => {
+  try {
+    const body = await c.req.json();
+    const result = await c.env.DB.prepare(
+      `INSERT INTO running_text_items (content, display_order, is_active, show_icon, icon)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+      .bind(
+        body.content,
+        body.display_order || 0,
+        body.is_active !== false ? 1 : 0,
+        body.show_icon !== false ? 1 : 0,
+        body.icon || "📢",
+      )
+      .run();
+
+    return c.json({ success: true, id: result.meta.last_row_id });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to create running text item" },
+      500,
+    );
+  }
+});
+
+// Update running text item
+app.put("/api/running-text/items/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+
+    await c.env.DB.prepare(
+      `UPDATE running_text_items SET
+        content = ?,
+        display_order = ?,
+        is_active = ?,
+        show_icon = ?,
+        icon = ?
+      WHERE id = ?`,
+    )
+      .bind(
+        body.content,
+        body.display_order || 0,
+        body.is_active ? 1 : 0,
+        body.show_icon ? 1 : 0,
+        body.icon || "📢",
+        id,
+      )
+      .run();
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to update running text item" },
+      500,
+    );
+  }
+});
+
+// Delete running text item
+app.delete("/api/running-text/items/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+    await c.env.DB.prepare("DELETE FROM running_text_items WHERE id = ?")
+      .bind(id)
+      .run();
+    return c.json({ success: true });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to delete running text item" },
+      500,
+    );
+  }
+});
+
+// Update running text settings
+app.put("/api/running-text/settings", async (c) => {
+  try {
+    const body = await c.req.json();
+
+    const existing = await c.env.DB.prepare(
+      "SELECT id FROM theme_settings LIMIT 1",
+    ).first();
+
+    if (existing) {
+      await c.env.DB.prepare(
+        `UPDATE theme_settings SET
+          show_running_text = ?,
+          running_text_speed = ?,
+          running_text_bg_color = ?,
+          running_text_text_color = ?,
+          running_text_font_size = ?,
+          running_text_font_family = ?,
+          running_text_spacing = ?,
+          running_text_separator = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?`,
+      )
+        .bind(
+          body.showRunningText ? 1 : 0,
+          body.speed || 50,
+          body.bgColor || null,
+          body.textColor || null,
+          body.fontSize || "1.25rem",
+          body.fontFamily || "inherit",
+          body.spacing || 0.75,
+          body.separator || "•",
+          (existing as any).id,
+        )
+        .run();
+    }
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    return c.json(
+      { success: false, error: "Failed to update running text settings" },
+      500,
+    );
+  }
+});
+
+// ============================================
 // Export for Cloudflare Workers
 // ============================================
 export default app;
