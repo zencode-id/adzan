@@ -81,7 +81,7 @@ export function ContentSlideshow({
 
       {/* Optional: Title overlay */}
       {currentContent.title && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+        <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/70 to-transparent p-4">
           <p className="text-white font-semibold text-sm">
             {currentContent.title}
           </p>

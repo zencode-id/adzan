@@ -227,6 +227,73 @@ db.exec(`
   INSERT OR IGNORE INTO adzan_settings (id) VALUES (1)
 `);
 
+// Tabel Running Text Items
+db.exec(`
+  CREATE TABLE IF NOT EXISTS running_text_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    display_order INTEGER DEFAULT 0,
+    is_active INTEGER DEFAULT 1,
+    show_icon INTEGER DEFAULT 1,
+    icon TEXT DEFAULT '📢',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// Add running text settings columns to theme_settings (for existing databases)
+try {
+  db.exec(
+    "ALTER TABLE theme_settings ADD COLUMN show_running_text INTEGER DEFAULT 1",
+  );
+} catch (e) {
+  /* Column may exist */
+}
+try {
+  db.exec(
+    "ALTER TABLE theme_settings ADD COLUMN running_text_speed INTEGER DEFAULT 50",
+  );
+} catch (e) {
+  /* Column may exist */
+}
+try {
+  db.exec("ALTER TABLE theme_settings ADD COLUMN running_text_bg_color TEXT");
+} catch (e) {
+  /* Column may exist */
+}
+try {
+  db.exec("ALTER TABLE theme_settings ADD COLUMN running_text_text_color TEXT");
+} catch (e) {
+  /* Column may exist */
+}
+try {
+  db.exec(
+    "ALTER TABLE theme_settings ADD COLUMN running_text_font_size TEXT DEFAULT '1.25rem'",
+  );
+} catch (e) {
+  /* Column may exist */
+}
+try {
+  db.exec(
+    "ALTER TABLE theme_settings ADD COLUMN running_text_font_family TEXT DEFAULT 'inherit'",
+  );
+} catch (e) {
+  /* Column may exist */
+}
+try {
+  db.exec(
+    "ALTER TABLE theme_settings ADD COLUMN running_text_spacing REAL DEFAULT 0.75",
+  );
+} catch (e) {
+  /* Column may exist */
+}
+try {
+  db.exec(
+    "ALTER TABLE theme_settings ADD COLUMN running_text_separator TEXT DEFAULT '•'",
+  );
+} catch (e) {
+  /* Column may exist */
+}
+
 // ============================================
 // 2. Seeder (Data default jika kosong)
 // ============================================
@@ -464,6 +531,24 @@ if (cekThemeSettings.count === 0) {
   );
 
   console.log("✅ Data pengaturan tema default berhasil dimasukkan!");
+}
+
+// Seeder Running Text Items
+const cekRunningText = db
+  .prepare("SELECT count(*) as count FROM running_text_items")
+  .get() as { count: number };
+if (cekRunningText.count === 0) {
+  const insertText = db.prepare(`
+    INSERT INTO running_text_items (content, display_order, icon, is_active, show_icon)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  insertText.run("Selamat datang di Masjid kami", 1, "🕌", 1, 1);
+  insertText.run("Jagalah kebersihan masjid", 2, "🧹", 1, 1);
+  insertText.run("Matikan HP saat sholat", 3, "📵", 1, 1);
+  insertText.run("Rapikan sandal di rak yang tersedia", 4, "👟", 1, 1);
+
+  console.log("✅ Data running text default berhasil dimasukkan!");
 }
 
 // ============================================
@@ -877,6 +962,137 @@ app.put("/api/adzan-settings", async (c) => {
     body.enabledPrayers?.maghrib ? 1 : 0,
     body.enabledPrayers?.isya ? 1 : 0,
   );
+
+  return c.json({ success: true });
+});
+
+// ============================================
+// 9c. Routes - Running Text
+// ============================================
+
+// Get all running text data (items + settings)
+app.get("/api/running-text", (c) => {
+  const items = db
+    .prepare("SELECT * FROM running_text_items ORDER BY display_order ASC")
+    .all();
+
+  // Get settings from first theme_settings row
+  const settings = db
+    .prepare(
+      `
+    SELECT 
+      show_running_text,
+      running_text_speed,
+      running_text_bg_color,
+      running_text_text_color,
+      running_text_font_size,
+      running_text_font_family,
+      running_text_spacing,
+      running_text_separator
+    FROM theme_settings LIMIT 1
+  `,
+    )
+    .get();
+
+  return c.json({ items, settings });
+});
+
+// Get running text items only
+app.get("/api/running-text/items", (c) => {
+  const items = db
+    .prepare("SELECT * FROM running_text_items ORDER BY display_order ASC")
+    .all();
+  return c.json(items);
+});
+
+// Add new running text item
+app.post("/api/running-text/items", async (c) => {
+  const body = await c.req.json();
+  const stmt = db.prepare(`
+    INSERT INTO running_text_items (content, display_order, is_active, show_icon, icon)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  const result = stmt.run(
+    body.content,
+    body.displayOrder || 0,
+    body.isActive ? 1 : 0,
+    body.showIcon ? 1 : 0,
+    body.icon || "📢",
+  );
+
+  const newItem = db
+    .prepare("SELECT * FROM running_text_items WHERE id = ?")
+    .get(result.lastInsertRowid);
+
+  return c.json(newItem);
+});
+
+// Update running text item
+app.put("/api/running-text/items/:id", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json();
+  const stmt = db.prepare(`
+    UPDATE running_text_items SET
+      content = ?,
+      display_order = ?,
+      is_active = ?,
+      show_icon = ?,
+      icon = ?
+    WHERE id = ?
+  `);
+  stmt.run(
+    body.content,
+    body.displayOrder || 0,
+    body.isActive ? 1 : 0,
+    body.showIcon ? 1 : 0,
+    body.icon || "📢",
+    id,
+  );
+  return c.json({ success: true });
+});
+
+// Delete running text item
+app.delete("/api/running-text/items/:id", (c) => {
+  const id = c.req.param("id");
+  db.prepare("DELETE FROM running_text_items WHERE id = ?").run(id);
+  return c.json({ success: true });
+});
+
+// Update running text settings
+app.put("/api/running-text/settings", async (c) => {
+  const body = await c.req.json();
+
+  // Get first theme_settings id
+  const existing = db.prepare("SELECT id FROM theme_settings LIMIT 1").get() as
+    | { id: number }
+    | undefined;
+
+  if (existing) {
+    const stmt = db.prepare(`
+      UPDATE theme_settings SET
+        show_running_text = ?,
+        running_text_speed = ?,
+        running_text_bg_color = ?,
+        running_text_text_color = ?,
+        running_text_font_size = ?,
+        running_text_font_family = ?,
+        running_text_spacing = ?,
+        running_text_separator = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    stmt.run(
+      body.showRunningText ? 1 : 0,
+      body.speed || 50,
+      body.bgColor,
+      body.textColor,
+      body.fontSize || "1.25rem",
+      body.fontFamily || "inherit",
+      body.spacing || 0.75,
+      body.separator || "•",
+      existing.id,
+    );
+  }
 
   return c.json({ success: true });
 });

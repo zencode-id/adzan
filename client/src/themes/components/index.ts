@@ -15,3 +15,4 @@ export { AnimatedPrayerCard } from "./AnimatedPrayerCard";
 export { DateDisplay } from "./DateDisplay";
 export { RunningText } from "./RunningText";
 export { MosqueHeader } from "./MosqueHeader";
+export { CautionAlert } from "./CautionAlert";

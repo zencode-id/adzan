@@ -10,6 +10,7 @@ import {
   type ScheduleFormData,
 } from "./ThemeScheduleManager";
 import { ThemeAssetGallery } from "./ThemeAssetGallery";
+import { RunningTextManager } from "./RunningTextManager";
 import { builtinThemes } from "../../themes";
 import { mosqueApi } from "../../lib/api";
 
@@ -21,7 +22,7 @@ export function DisplaySettings() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "theme" | "assets" | "schedule" | "preview"
+    "theme" | "assets" | "schedule" | "ticker" | "preview"
   >("theme");
 
   // Load current settings
@@ -107,6 +108,7 @@ export function DisplaySettings() {
         {[
           { id: "theme", label: "Pilih Tema", icon: "palette" },
           { id: "assets", label: "Assets", icon: "perm_media" },
+          { id: "ticker", label: "Running Text", icon: "subtitles" },
           { id: "schedule", label: "Jadwal Otomatis", icon: "schedule" },
           { id: "preview", label: "Preview", icon: "visibility" },
         ].map((tab) => (
@@ -141,6 +143,8 @@ export function DisplaySettings() {
       )}
 
       {activeTab === "assets" && <ThemeAssetGallery />}
+
+      {activeTab === "ticker" && <RunningTextManager />}
 
       {activeTab === "schedule" && (
         <ThemeScheduleManager

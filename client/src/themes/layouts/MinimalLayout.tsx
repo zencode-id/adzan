@@ -5,20 +5,34 @@
 import type { DisplayThemeProps } from "../types";
 import { ClockDisplay } from "../components/ClockDisplay";
 import { PrayerTimesGrid } from "../components/PrayerTimesGrid";
+import { RunningText } from "../components/RunningText";
+import { CautionAlert } from "../components/CautionAlert";
 
 export function MinimalLayout(props: DisplayThemeProps) {
   const {
     mosqueName,
+    mosqueLocation,
     gregorianDate,
+    hijriDate,
     formattedTime,
     prayerTimes,
     nextPrayer,
     activePrayer,
     theme,
+    announcements = [],
   } = props;
 
-  // Prayer list for minimal style
+  // Prayer list for minimal style (8 times)
   const prayersList = [
+    {
+      name: "Imsak",
+      time: prayerTimes.imsak,
+      icon: "dark_mode",
+      iconColor: theme.colors.textMuted,
+      isActive: false,
+      isNext: false,
+      isSpecial: true,
+    },
     {
       name: "Subuh",
       time: prayerTimes.subuh,
@@ -26,6 +40,24 @@ export function MinimalLayout(props: DisplayThemeProps) {
       iconColor: theme.colors.primary,
       isActive: activePrayer === "Subuh",
       isNext: nextPrayer?.name === "Subuh",
+    },
+    {
+      name: "Terbit",
+      time: prayerTimes.terbit,
+      icon: "wb_sunny",
+      iconColor: theme.colors.textMuted,
+      isActive: false,
+      isNext: nextPrayer?.name === "Terbit",
+      isSpecial: true,
+    },
+    {
+      name: "Dhuha",
+      time: prayerTimes.dhuha,
+      icon: "sunny",
+      iconColor: theme.colors.textMuted,
+      isActive: false,
+      isNext: false,
+      isSpecial: true,
     },
     {
       name: "Dzuhur",
@@ -124,9 +156,29 @@ export function MinimalLayout(props: DisplayThemeProps) {
           </div>
         </div>
 
-        {/* Footer - Empty space for balance */}
-        <footer className="mt-auto" />
+        {/* Footer with Running Text */}
+        <footer className="mt-auto">
+          <RunningText
+            items={[
+              `🕌 Selamat Datang di ${mosqueName}`,
+              `📍 ${mosqueLocation}`,
+              `🌙 ${hijriDate.day} ${hijriDate.monthName} ${hijriDate.year} H`,
+              ...announcements,
+            ]}
+            theme={theme}
+          />
+        </footer>
       </div>
+
+      {/* Caution Alert Overlay */}
+      {props.caution && (
+        <CautionAlert
+          isActive={props.caution.isActive}
+          type={props.caution.type}
+          countdown={props.caution.countdown}
+          theme={theme}
+        />
+      )}
     </div>
   );
 }

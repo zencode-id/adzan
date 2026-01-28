@@ -16,87 +16,87 @@ Dokumentasi lengkap untuk sistem tema pada aplikasi Mosque Display.
 
 ---
 
-## Arsitektur
+## Arsitektur & Cara Kerja
+
+### Diagram Alir (Workflow)
 
 ```mermaid
-flowchart TB
-    subgraph Client["Client (Browser)"]
-        UI[Dashboard UI]
-        Display[Display Screen]
-        IndexedDB[(IndexedDB)]
-        ThemeContext[AutoThemeProvider]
-        Resolver[Theme Resolver]
+sequenceDiagram
+    participant Admin as Admin Dashboard
+    participant DB as SQLite (D1)
+    participant Worker as Cloudflare Worker
+    participant R2 as R2 Storage
+    participant Display as TV / Display Screen
+
+    Note over Admin, Display: 1. Update & Sync
+    Admin->>Worker: POST /api/mosque (Ganti Tema)
+    Worker->>DB: UPDATE theme_id
+    Worker-->>Admin: Success
+    Admin->>Admin: Update State (Instant Context Sync)
+
+    Note over Admin, Display: 2. Auto Propagation (Polling)
+    loop Setiap 30 Detik
+        Display->>Worker: GET /api/mosque (Poll)
+        Worker->>DB: READ current theme_id
+        Worker-->>Display: current theme_id
+        Display->>Display: Resolve & Switch Theme (Transition)
     end
 
-    subgraph Server["Server (Hono/SQLite)"]
-        API[REST API]
-        SQLite[(SQLite DB)]
-        R2[R2/File Storage]
-    end
-
-    UI --> ThemeContext
-    Display --> ThemeContext
-    ThemeContext --> Resolver
-    Resolver --> IndexedDB
-
-    UI -->|Upload Assets| API
-    API --> R2
-    API --> SQLite
-
-    IndexedDB <-->|Sync| API
+    Note over Admin, Display: 3. Asset Management
+    Admin->>Worker: POST /api/upload (Media)
+    Worker->>R2: Store File
+    Display->>Worker: GET /api/files/:key
+    Worker->>R2: Fetch File
+    Worker-->>Display: Image/Video Stream
 ```
 
 ### Komponen Utama
 
-| File                         | Deskripsi                                      |
-| ---------------------------- | ---------------------------------------------- |
-| `themes/types.ts`            | Type definitions untuk theme config            |
-| `themes/presets.ts`          | 5 built-in themes                              |
-| `themes/resolver.ts`         | Logic untuk auto-switch berdasarkan jadwal     |
-| `themes/ThemeContext.tsx`    | Global provider dengan auto-resolution         |
-| `themes/useThemeHooks.ts`    | React hooks (`useAutoTheme`, `useThemeStyles`) |
-| `themes/ThemeDebugPanel.tsx` | Debug panel untuk monitoring                   |
-| `themes/layouts/`            | Layout components (Classic, Modern, Minimal)   |
-| `themes/components/`         | Reusable theme-aware components                |
+| File                       | Deskripsi                                      |
+| -------------------------- | ---------------------------------------------- |
+| `themes/types.ts`          | Type definitions untuk theme config            |
+| `themes/presets.ts`        | **5 built-in themes** (Emerald, Sunset, etc)   |
+| `themes/resolver.ts`       | Logic auto-switch berdasarkan jadwal / sholat  |
+| `themes/ThemeContext.tsx`  | **Global Provider** (Polling & State Sync)     |
+| `themes/useThemeHooks.ts`  | React hooks (`useAutoTheme`, `useThemeStyles`) |
+| `themes/ThemedDisplay.tsx` | Container utama layar display                  |
+| `components/dashboard/`    | UI Kontrol (Selector, Schedule, Assets)        |
 
 ---
 
 ## Built-in Themes
 
+Daftar tema bawaan yang tersedia saat ini:
+
 ### 1. Emerald Classic
 
-- **ID**: `emerald`
-- **Layout**: Classic
-- **Warna**: Hijau zamrud dengan aksen emas
-- **Cocok untuk**: Penggunaan sehari-hari
+- **ID**: `emerald-classic`
+- **Nuansa**: Hijau Islami Tradisional
+- **Aksen**: Emas (Gold)
 
-### 2. Night Sky
+### 2. Sunset Warm
 
-- **ID**: `night_sky`
-- **Layout**: Modern
-- **Warna**: Biru gelap dengan aksen cyan
-- **Cocok untuk**: Malam hari
+- **ID**: `sunset-warm`
+- **Nuansa**: Hangat (Oranye/Coklat)
+- **Cocok**: Waktu Maghrib
 
-### 3. Sunset Warm
+### 3. Night Sky
 
-- **ID**: `sunset_warm`
-- **Layout**: Classic
-- **Warna**: Orange hangat dengan aksen kuning
-- **Cocok untuk**: Waktu Maghrib
+- **ID**: `night-sky`
+- **Nuansa**: Biru Gelap / Malam
+- **Fitur**: Efek partikel bintang
 
-### 4. Royal Purple
+### 4. Minimalist White
 
-- **ID**: `royal_purple`
-- **Layout**: Modern
-- **Warna**: Ungu royal dengan aksen pink
-- **Cocok untuk**: Acara khusus
+- **ID**: `minimalist-white`
+- **Nuansa**: Putih Bersih / Modern
+- **Layout**: Minimalis / Tanpa ornamen berat
 
 ### 5. Ramadan Kareem
 
-- **ID**: `ramadan_kareem`
-- **Layout**: Classic
-- **Warna**: Emas dengan aksen hijau
-- **Cocok untuk**: Bulan Ramadan
+- **ID**: `ramadan-kareem`
+- **Nuansa**: Emas & Hijau
+- **Fitur**: Ornamen khusus bulan suci (Lentera)
 
 ---
 

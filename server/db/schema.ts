@@ -171,6 +171,16 @@ export const themeSettings = sqliteTable("theme_settings", {
   prayerBarPosition: text("prayer_bar_position").default("bottom"),
   highlightCurrentPrayer: integer("highlight_current_prayer").default(1),
 
+  // Running text settings
+  showRunningText: integer("show_running_text").default(1),
+  runningTextSpeed: integer("running_text_speed").default(50), // pixels per second
+  runningTextBgColor: text("running_text_bg_color"), // null = use primary
+  runningTextTextColor: text("running_text_text_color"), // null = use bg
+  runningTextFontSize: text("running_text_font_size").default("1.25rem"),
+  runningTextFontFamily: text("running_text_font_family").default("inherit"),
+  runningTextSpacing: real("running_text_spacing").default(0.75), // spacing in rem
+  runningTextSeparator: text("running_text_separator").default("•"), // separator character
+
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -241,6 +251,19 @@ export const themeAssets = sqliteTable("theme_assets", {
 });
 
 // ============================================
+// Running Text Items Table
+// ============================================
+export const runningTextItems = sqliteTable("running_text_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  content: text("content").notNull(),
+  displayOrder: integer("display_order").default(0),
+  isActive: integer("is_active").default(1),
+  showIcon: integer("show_icon").default(1),
+  icon: text("icon").default("📢"),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ============================================
 // Type Exports for use in application
 // ============================================
 export type Jadwal = typeof jadwal.$inferSelect;
@@ -272,3 +295,6 @@ export type NewThemeSchedule = typeof themeSchedules.$inferInsert;
 
 export type ThemeAsset = typeof themeAssets.$inferSelect;
 export type NewThemeAsset = typeof themeAssets.$inferInsert;
+
+export type RunningTextItem = typeof runningTextItems.$inferSelect;
+export type NewRunningTextItem = typeof runningTextItems.$inferInsert;

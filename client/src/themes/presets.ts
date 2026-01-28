@@ -336,6 +336,196 @@ export const ramadanKareem: ThemeConfig = {
 };
 
 // ============================================
+// Theme 6: Immersive Sunset
+// ============================================
+export const immersiveSunset: ThemeConfig = {
+  id: "immersive-sunset",
+  slug: "immersive-sunset",
+  name: "Immersive Sunset",
+  description: "Tema immersive dengan background gambar dan vignette overlay",
+  isBuiltin: true,
+
+  colors: {
+    primary: "#2beead", // Teal/Mint
+    secondary: "#22d3ee", // Cyan
+    accent: "#fbbf24", // Amber
+
+    bg: "#10221c", // Deep dark green
+    bgSecondary: "#1a3129",
+
+    text: "#ffffff",
+    textSecondary: "rgba(255, 255, 255, 0.8)",
+    textMuted: "rgba(255, 255, 255, 0.5)",
+
+    card: "rgba(16, 34, 28, 0.4)",
+    cardHover: "rgba(16, 34, 28, 0.6)",
+    border: "rgba(255, 255, 255, 0.1)",
+
+    success: "#22c55e",
+    warning: "#fbbf24",
+    error: "#ef4444",
+  },
+
+  typography: {
+    ...defaultTypography,
+    fontFamily: "Inter, system-ui, sans-serif",
+    clockFontSize: "15rem",
+    clockFontWeight: "200",
+  },
+
+  background: {
+    type: "image",
+    value:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920",
+    overlay: "rgba(0, 0, 0, 0.4)",
+  },
+
+  ornaments: {
+    show: true,
+    style: "minimal",
+    opacity: 0.1,
+  },
+
+  layout: {
+    ...defaultLayout,
+    type: "immersive",
+    showOrnaments: true,
+    prayerBarStyle: "horizontal",
+    prayerBarPosition: "bottom",
+  },
+
+  animation: {
+    ...defaultAnimation,
+    transitionType: "fade",
+  },
+};
+
+// ============================================
+// Theme 7: High-Contrast Digital
+// ============================================
+export const digitalNeon: ThemeConfig = {
+  id: "digital-neon",
+  slug: "digital-neon",
+  name: "Digital Neon",
+  description: "Tema high-contrast dengan warna neon hijau yang mencolok",
+  isBuiltin: true,
+
+  colors: {
+    primary: "#39FF14", // Neon Green
+    secondary: "#22d3ee", // Cyan
+    accent: "#fbbf24", // Amber
+
+    bg: "#000000", // Pure Black
+    bgSecondary: "#0a0a0a",
+
+    text: "#ffffff",
+    textSecondary: "rgba(255, 255, 255, 0.85)",
+    textMuted: "rgba(255, 255, 255, 0.5)",
+
+    card: "rgba(20, 20, 20, 0.8)",
+    cardHover: "rgba(30, 30, 30, 0.9)",
+    border: "rgba(255, 255, 255, 0.05)",
+
+    success: "#39FF14",
+    warning: "#fbbf24",
+    error: "#ef4444",
+  },
+
+  typography: {
+    ...defaultTypography,
+    fontFamily: "Lexend, Inter, system-ui, sans-serif",
+    clockFontSize: "16rem",
+    clockFontWeight: "900",
+  },
+
+  background: {
+    type: "solid",
+    value: "#000000",
+  },
+
+  ornaments: {
+    show: false,
+    style: "none",
+    opacity: 0,
+  },
+
+  layout: {
+    ...defaultLayout,
+    type: "digital",
+    showOrnaments: false,
+    prayerBarStyle: "cards",
+  },
+
+  animation: {
+    ...defaultAnimation,
+    clockAnimation: "glow",
+  },
+};
+
+// ============================================
+// Theme 8: Royal Dark
+// ============================================
+export const royalDark: ThemeConfig = {
+  id: "royal-dark",
+  slug: "royal-dark",
+  name: "Royal Dark",
+  description: "Tema elegan dengan warna gold dan astronomikal rings",
+  isBuiltin: true,
+
+  colors: {
+    primary: "#D4AF37", // Classic Gold
+    secondary: "#B8860B", // Dark Golden Rod
+    accent: "#FFD700", // Gold
+
+    bg: "#050A18", // Deep Navy
+    bgSecondary: "#0d1424",
+
+    text: "#ffffff",
+    textSecondary: "rgba(255, 255, 255, 0.8)",
+    textMuted: "rgba(255, 255, 255, 0.5)",
+
+    card: "rgba(255, 255, 255, 0.05)",
+    cardHover: "rgba(255, 255, 255, 0.1)",
+    border: "rgba(212, 175, 55, 0.2)",
+
+    success: "#22c55e",
+    warning: "#D4AF37",
+    error: "#ef4444",
+  },
+
+  typography: {
+    ...defaultTypography,
+    fontFamily: "Cinzel, Playfair Display, serif",
+    clockFontSize: "10rem",
+    clockFontWeight: "800",
+  },
+
+  background: {
+    type: "solid",
+    value: "#050A18",
+  },
+
+  ornaments: {
+    show: true,
+    style: "geometric",
+    opacity: 0.1,
+  },
+
+  layout: {
+    ...defaultLayout,
+    type: "royal",
+    showOrnaments: true,
+    prayerBarStyle: "minimal",
+  },
+
+  animation: {
+    ...defaultAnimation,
+    clockAnimation: "glow",
+    transitionType: "crossfade",
+  },
+};
+
+// ============================================
 // All Built-in Themes
 // ============================================
 export const builtinThemes: ThemeConfig[] = [
@@ -344,6 +534,9 @@ export const builtinThemes: ThemeConfig[] = [
   nightSky,
   minimalistWhite,
   ramadanKareem,
+  immersiveSunset,
+  digitalNeon,
+  royalDark,
 ];
 
 // ============================================

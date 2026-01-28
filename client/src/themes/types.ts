@@ -68,7 +68,14 @@ export interface ThemeOrnamentItem {
 }
 
 export interface ThemeLayout {
-  type: "classic" | "modern" | "minimal" | "fullscreen";
+  type:
+    | "classic"
+    | "modern"
+    | "minimal"
+    | "fullscreen"
+    | "immersive"
+    | "digital"
+    | "royal";
 
   // Visibility toggles
   showHeader: boolean;
@@ -156,6 +163,13 @@ export interface DisplayThemeProps {
 
   // Theme config
   theme: ThemeConfig;
+
+  // Caution / Peringatan state
+  caution?: {
+    isActive: boolean;
+    type: "adzan" | "imsak" | null;
+    countdown: string | null;
+  };
 
   // Extras
   quote?: string;

@@ -9,6 +9,8 @@ import { ParticleEffect } from "../components/ParticleEffect";
 import { ClockDisplay } from "../components/ClockDisplay";
 import { DateDisplay } from "../components/DateDisplay";
 import { PrayerTimesGrid } from "../components/PrayerTimesGrid";
+import { RunningText } from "../components/RunningText";
+import { CautionAlert } from "../components/CautionAlert";
 
 export function ModernLayout(props: DisplayThemeProps) {
   const {
@@ -21,10 +23,20 @@ export function ModernLayout(props: DisplayThemeProps) {
     nextPrayer,
     activePrayer,
     theme,
+    announcements = [],
   } = props;
 
-  // Simplified prayer list for horizontal bar
+  // Complete prayer list for horizontal bar (8 times)
   const prayersList = [
+    {
+      name: "Imsak",
+      time: prayerTimes.imsak,
+      icon: "dark_mode",
+      iconColor: "#a78bfa",
+      isActive: false,
+      isNext: false,
+      isSpecial: true,
+    },
     {
       name: "Subuh",
       time: prayerTimes.subuh,
@@ -32,6 +44,24 @@ export function ModernLayout(props: DisplayThemeProps) {
       iconColor: "#facc15",
       isActive: activePrayer === "Subuh",
       isNext: nextPrayer?.name === "Subuh",
+    },
+    {
+      name: "Terbit",
+      time: prayerTimes.terbit,
+      icon: "wb_sunny",
+      iconColor: "#f97316",
+      isActive: activePrayer === "Terbit",
+      isNext: nextPrayer?.name === "Terbit",
+      isSpecial: true,
+    },
+    {
+      name: "Dhuha",
+      time: prayerTimes.dhuha,
+      icon: "sunny",
+      iconColor: "#eab308",
+      isActive: activePrayer === "Dhuha",
+      isNext: nextPrayer?.name === "Dhuha",
+      isSpecial: true,
     },
     {
       name: "Dzuhur",
@@ -140,15 +170,33 @@ export function ModernLayout(props: DisplayThemeProps) {
           )}
         </div>
 
-        {/* Bottom - Horizontal Prayer Bar */}
-        <footer>
+        <footer className="space-y-4">
           <PrayerTimesGrid
             prayers={prayersList}
             theme={theme}
             style="horizontal"
           />
+          <RunningText
+            items={[
+              `🕌 Selamat Datang di ${mosqueName}`,
+              `📍 ${mosqueLocation}`,
+              `🌙 ${hijriDate.day} ${hijriDate.monthName} ${hijriDate.year} H`,
+              ...announcements,
+            ]}
+            theme={theme}
+          />
         </footer>
       </div>
+
+      {/* Caution Alert Overlay */}
+      {props.caution && (
+        <CautionAlert
+          isActive={props.caution.isActive}
+          type={props.caution.type}
+          countdown={props.caution.countdown}
+          theme={theme}
+        />
+      )}
     </div>
   );
 }

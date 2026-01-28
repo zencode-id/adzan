@@ -38,6 +38,8 @@ const ADZAN_AUDIO_URLS = {
   // Online fallbacks
   fallback_default: "https://www.islamcan.com/audio/adhan/azan1.mp3",
   fallback_subuh: "https://www.islamcan.com/audio/adhan/azan1.mp3",
+  fallback_tarhim:
+    "https://ia800109.us.archive.org/34/items/sholawat_tarhim/sholawat_tarhim.mp3",
 };
 
 export interface AdzanSettings {
@@ -322,6 +324,17 @@ export class AdzanService {
       this.notifyStateChange();
     } catch (error) {
       console.error("Failed to play tarhim:", error);
+      // Try fallback URL if local file fails
+      if (audioUrl.startsWith(LOCAL_AUDIO_BASE)) {
+        const fallbackUrl = ADZAN_AUDIO_URLS.fallback_tarhim;
+        try {
+          this.audioElement.src = fallbackUrl;
+          await this.audioElement.play();
+          this.notifyStateChange();
+        } catch (fallbackError) {
+          console.error("Failed to play fallback tarhim:", fallbackError);
+        }
+      }
     }
   }
 

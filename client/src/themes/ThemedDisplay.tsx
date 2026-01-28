@@ -4,7 +4,12 @@
 // ============================================
 
 import { useState, useEffect, useMemo } from "react";
-import { mosqueApi, type MosqueInfo } from "../lib/api";
+import {
+  mosqueApi,
+  adzanSettingsApi,
+  type MosqueInfo,
+  type AdzanSettingsData,
+} from "../lib/api";
 import {
   calculatePrayerTimes,
   getNextPrayer,
@@ -20,10 +25,16 @@ import { ThemeDebugPanel } from "./ThemeDebugPanel";
 import { ClassicLayout } from "./layouts/ClassicLayout";
 import { ModernLayout } from "./layouts/ModernLayout";
 import { MinimalLayout } from "./layouts/MinimalLayout";
+import { ImmersiveLayout } from "./layouts/ImmersiveLayout";
+import { DigitalLayout } from "./layouts/DigitalLayout";
+import { RoyalLayout } from "./layouts/RoyalLayout";
 
 export function ThemedDisplay() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [mosqueInfo, setMosqueInfo] = useState<MosqueInfo | null>(null);
+  const [adzanSettings, setAdzanSettings] = useState<AdzanSettingsData | null>(
+    null,
+  );
 
   // Use global auto theme context
   const { currentTheme, isTransitioning } = useAutoTheme();
@@ -36,13 +47,17 @@ export function ThemedDisplay() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch mosque data on mount
+  // Fetch mosque and adzan data on mount
   useEffect(() => {
-    const fetchMosque = async () => {
-      const mosque = await mosqueApi.get();
+    const fetchData = async () => {
+      const [mosque, adzan] = await Promise.all([
+        mosqueApi.get(),
+        adzanSettingsApi.get(),
+      ]);
       setMosqueInfo(mosque);
+      setAdzanSettings(adzan);
     };
-    fetchMosque();
+    fetchData();
   }, []);
 
   // Parse coordinates for adzan
@@ -50,13 +65,19 @@ export function ThemedDisplay() {
   const lng = mosqueInfo ? parseFloat(mosqueInfo.coordinates.longitude) : 0;
 
   // Adzan auto-playback
-  useAdzan({
+  const { state: adzanState } = useAdzan({
     prayerSettings: {
       latitude: lat,
       longitude: lng,
       calculationMethod: "Kemenag",
     },
-    autoStart: mosqueInfo !== null && lat !== 0 && lng !== 0,
+    adzanSettings: adzanSettings || undefined,
+    autoStart:
+      mosqueInfo !== null &&
+      !isNaN(lat) &&
+      !isNaN(lng) &&
+      lat !== 0 &&
+      lng !== 0,
   });
 
   // Calculate prayer times
@@ -245,6 +266,12 @@ export function ThemedDisplay() {
 
     theme: currentTheme,
 
+    caution: {
+      isActive: adzanState.isCautionActive,
+      type: adzanState.cautionFor as "adzan" | "imsak" | null,
+      countdown: adzanState.cautionCountdown,
+    },
+
     announcements: [`☎️ ${mosqueInfo.phone || "Hubungi Takmir"}`],
   };
 
@@ -255,6 +282,12 @@ export function ThemedDisplay() {
         return <ModernLayout {...displayProps} />;
       case "minimal":
         return <MinimalLayout {...displayProps} />;
+      case "immersive":
+        return <ImmersiveLayout {...displayProps} />;
+      case "digital":
+        return <DigitalLayout {...displayProps} />;
+      case "royal":
+        return <RoyalLayout {...displayProps} />;
       case "classic":
       default:
         return <ClassicLayout {...displayProps} />;

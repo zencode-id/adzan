@@ -16,3 +16,4 @@ export { HijriCalendar } from "./HijriCalendar";
 export { AdzanControl } from "./AdzanControl";
 export { AdzanSettings } from "./AdzanSettings";
 export { DisplayContentManager } from "./DisplayContentManager";
+export { RunningTextManager } from "./RunningTextManager";

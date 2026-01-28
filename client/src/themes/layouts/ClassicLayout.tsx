@@ -12,6 +12,7 @@ import { ClockDisplay } from "../components/ClockDisplay";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { PrayerTimesGrid } from "../components/PrayerTimesGrid";
 import { RunningText } from "../components/RunningText";
+import { CautionAlert } from "../components/CautionAlert";
 
 export function ClassicLayout(props: DisplayThemeProps) {
   const {
@@ -174,11 +175,20 @@ export function ClassicLayout(props: DisplayThemeProps) {
           </div>
         </div>
 
-        {/* Footer - Running Text */}
         <footer className="mt-8">
           <RunningText items={runningItems} theme={theme} />
         </footer>
       </div>
+
+      {/* Caution Alert Overlay */}
+      {props.caution && (
+        <CautionAlert
+          isActive={props.caution.isActive}
+          type={props.caution.type}
+          countdown={props.caution.countdown}
+          theme={theme}
+        />
+      )}
     </div>
   );
 }
