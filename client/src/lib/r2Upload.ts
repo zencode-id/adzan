@@ -7,68 +7,175 @@ import imageCompression from "browser-image-compression";
 import { themeAssetsLocal, generateLocalId, now } from "./localDatabase";
 import type { LocalThemeAsset } from "./localDatabase";
 
+// Constants
 const API_BASE_URL =
   (
     import.meta.env.VITE_API_URL ||
-    "https://mosque-display-api.adzan.workers.dev/"
+    "https://mosque-display-api.adzan.workers.dev"
   ).replace(/\/$/, "") + "/api";
 
-// Upload result type
 export interface UploadResult {
   success: boolean;
   url?: string;
   key?: string;
-  error?: string;
   localId?: string;
+  error?: string;
 }
 
-// Upload progress callback
-export type UploadProgressCallback = (progress: number) => void;
+export interface RemoteFile {
+  key: string;
+  size: number;
+  uploaded: string;
+  httpMetadata?: {
+    contentType?: string;
+  };
+  url?: string;
+}
 
-// Allowed file types
-const ALLOWED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "image/svg+xml",
-];
+// ============================================
+// File Validation Utilities
+// ============================================
+export const validateFile = (file: File) => {
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+    "video/mp4",
+    "video/webm",
+  ];
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-// Validate file before upload
-export function validateFile(file: File): { valid: boolean; error?: string } {
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    return {
-      valid: false,
-      error: `File type ${file.type} not allowed. Allowed: ${ALLOWED_IMAGE_TYPES.join(", ")}`,
-    };
+  if (file.size > maxSize) {
+    return { valid: false, error: "File too large (max 10MB)" };
   }
 
-  if (file.size > MAX_FILE_SIZE) {
-    return {
-      valid: false,
-      error: `File size ${(file.size / 1024 / 1024).toFixed(2)}MB exceeds limit of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
-    };
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: "Tipe file tidak didukung" };
   }
 
   return { valid: true };
-}
+};
 
-// Generate unique filename
-function generateFileName(file: File, prefix: string = "asset"): string {
-  const ext = file.name.split(".").pop() || "jpg";
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
-  return `${prefix}_${timestamp}_${random}.${ext}`;
+// ============================================
+// Image Processing Utilities
+// ============================================
+export const imageUtils = {
+  // Get image dimensions
+  getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = URL.createObjectURL(file);
+    });
+  },
+
+  // Resize image using canvas (fallback if browser-image-compression fails)
+  resizeImage(
+    file: File,
+    maxWidth = 1920,
+    maxHeight = 1080,
+    quality = 0.85,
+  ): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Failed to get canvas context"));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Failed to create blob"));
+          },
+          file.type,
+          quality,
+        );
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = URL.createObjectURL(file);
+    });
+  },
+};
+
+// ============================================
+// XMLHttpRequest wrapper with progress support
+// ============================================
+function uploadWithProgress(
+  url: string,
+  formData: FormData,
+  onProgress?: (progress: number) => void,
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.open("POST", url, true);
+    xhr.responseType = "text"; // Change to text for manual parsing or Response creation
+    xhr.timeout = 60000; // 60s timeout
+
+    if (onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          onProgress(progress);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      // Create a proper Response object from XHR result
+      const options = {
+        status: xhr.status,
+        statusText: xhr.statusText,
+        headers: new Headers({
+          "Content-Type":
+            xhr.getResponseHeader("Content-Type") || "application/json",
+        }),
+      };
+
+      const response = new Response(xhr.responseText, options);
+      resolve(response);
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.ontimeout = () => reject(new Error("Upload timed out after 60s"));
+
+    xhr.send(formData);
+  });
 }
 
 // ============================================
-// R2 Upload Functions
+// Main Upload Service
 // ============================================
-
 export const r2Upload = {
-  // Upload single file to R2
+  // Upload a single file to R2 via worker
   async uploadFile(
     file: File,
     options: {
@@ -76,76 +183,68 @@ export const r2Upload = {
       themeId?: number;
       themeLocalId?: string;
       assetType?: LocalThemeAsset["assetType"];
-      onProgress?: UploadProgressCallback;
-      compress?: boolean; // Auto-compress images before upload
+      onProgress?: (progress: number) => void;
+      compress?: boolean;
       maxWidth?: number;
       maxHeight?: number;
       quality?: number;
     } = {},
   ): Promise<UploadResult> {
-    const validation = validateFile(file);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
-    }
-
-    const {
-      folder = "theme-assets",
-      themeId = 0,
-      themeLocalId = "",
-      assetType = "background",
-      onProgress,
-      compress = true, // Default: compress images
-      maxWidth = 1920,
-      maxHeight = 1080,
-      quality = 0.85,
-    } = options;
-
-    // Compress image if enabled and file is an image
-    let fileToUpload: File | Blob = file;
-    if (
-      compress &&
-      file.type.startsWith("image/") &&
-      !file.type.includes("gif")
-    ) {
-      try {
-        console.log(
-          `Compressing image: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`,
-        );
-
-        // Use browser-image-compression library
-        const compressedFile = await imageCompression(file, {
-          maxSizeMB: 1, // Max file size in MB
-          maxWidthOrHeight: Math.max(maxWidth, maxHeight),
-          useWebWorker: true,
-          fileType: file.type as "image/jpeg" | "image/png" | "image/webp",
-          initialQuality: quality,
-        });
-
-        // Only use compressed version if it's smaller
-        if (compressedFile.size < file.size) {
-          fileToUpload = compressedFile;
-          console.log(
-            `Compressed: ${(file.size / 1024).toFixed(1)}KB → ${(compressedFile.size / 1024).toFixed(1)}KB`,
-          );
-        }
-      } catch (e) {
-        console.warn("Compression failed, using original file:", e);
-      }
-    }
-
-    const fileName = generateFileName(file, assetType);
-    const key = `${folder}/${fileName}`;
-
     try {
-      // Use FormData for upload
+      const {
+        folder = "theme-assets",
+        themeId = 0,
+        themeLocalId = "",
+        assetType = "background",
+        onProgress,
+        compress = true, // Default: compress images
+        maxWidth = 1920,
+        maxHeight = 1080,
+        quality = 0.85,
+      } = options;
+
+      // Compress image if enabled and file is an image
+      let fileToUpload: File | Blob = file;
+      if (
+        compress &&
+        file.type.startsWith("image/") &&
+        !file.type.includes("gif")
+      ) {
+        try {
+          console.log(
+            `Compressing image: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`,
+          );
+
+          // Use browser-image-compression library
+          const compressedFile = await imageCompression(file, {
+            maxSizeMB: 1, // Max file size in MB
+            maxWidthOrHeight: Math.max(maxWidth, maxHeight),
+            useWebWorker: true,
+            fileType: file.type as "image/jpeg" | "image/png" | "image/webp",
+            initialQuality: quality,
+          });
+
+          // Only use compressed version if it's smaller
+          if (compressedFile.size < file.size) {
+            fileToUpload = compressedFile;
+            console.log(
+              `Compressed: ${(file.size / 1024).toFixed(1)}KB → ${(compressedFile.size / 1024).toFixed(1)}KB`,
+            );
+          }
+        } catch (e) {
+          console.warn("Compression failed, using original file:", e);
+        }
+      }
+
       const formData = new FormData();
       formData.append("file", fileToUpload, file.name);
-      formData.append("key", key);
-      formData.append("assetType", assetType);
+      formData.append("folder", folder);
+
       if (themeId) formData.append("themeId", themeId.toString());
       if (themeLocalId) formData.append("themeLocalId", themeLocalId);
+      if (assetType) formData.append("assetType", assetType);
 
-      // Upload to server (which will forward to R2)
+      // Use XHR for progress support
       const response = await uploadWithProgress(
         `${API_BASE_URL}/upload`,
         formData,
@@ -242,7 +341,7 @@ export const r2Upload = {
       }
 
       // Remove from local database if localId provided
-      if (localId) {
+      if (localId && localId !== "manual-delete") {
         await themeAssetsLocal.delete(localId);
       }
 
@@ -279,7 +378,25 @@ export const r2Upload = {
     }
   },
 
-  // List uploaded assets
+  // List all files from R2
+  async listFiles(
+    limit = 100,
+  ): Promise<{ success: boolean; files?: RemoteFile[]; error?: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/files?limit=${limit}`);
+      if (!response.ok) throw new Error("Failed to fetch files");
+      const data = await response.json();
+      return { success: true, files: data.files };
+    } catch (error) {
+      console.error("List files error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch files",
+      };
+    }
+  },
+
+  // List uploaded assets (legacy/specific)
   async listAssets(
     options: {
       folder?: string;
@@ -301,198 +418,11 @@ export const r2Upload = {
         return [];
       }
 
-      const data = await response.json();
-      return data.files || [];
+      return await response.json();
     } catch (error) {
       console.error("List assets error:", error);
       return [];
     }
-  },
-};
-
-// ============================================
-// Upload with progress tracking
-// ============================================
-async function uploadWithProgress(
-  url: string,
-  formData: FormData,
-  onProgress?: UploadProgressCallback,
-): Promise<Response> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    xhr.upload.addEventListener("progress", (event) => {
-      if (event.lengthComputable && onProgress) {
-        const progress = Math.round((event.loaded / event.total) * 100);
-        onProgress(progress);
-      }
-    });
-
-    xhr.addEventListener("load", () => {
-      // responseType is 'text' so we need to parse JSON ourselves
-      let responseBody = xhr.responseText;
-      resolve(
-        new Response(responseBody, {
-          status: xhr.status,
-          statusText: xhr.statusText,
-          headers: {
-            "Content-Type":
-              xhr.getResponseHeader("Content-Type") || "application/json",
-          },
-        }),
-      );
-    });
-
-    xhr.addEventListener("error", () => {
-      reject(new Error("Network error"));
-    });
-
-    xhr.addEventListener("abort", () => {
-      reject(new Error("Upload aborted"));
-    });
-
-    xhr.addEventListener("timeout", () => {
-      reject(new Error("Upload timeout"));
-    });
-
-    xhr.open("POST", url);
-    xhr.responseType = "text"; // Use text to properly create Response
-    xhr.timeout = 60000; // 60 second timeout
-    xhr.send(formData);
-  });
-}
-
-// ============================================
-// Image processing utilities
-// ============================================
-export const imageUtils = {
-  // Resize image before upload
-  async resizeImage(
-    file: File,
-    maxWidth: number = 1920,
-    maxHeight: number = 1080,
-    quality: number = 0.85,
-  ): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-
-        let { width, height } = img;
-
-        // Calculate new dimensions
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-
-        // Create canvas and draw
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Canvas context not available"));
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              reject(new Error("Failed to create blob"));
-            }
-          },
-          file.type === "image/png" ? "image/png" : "image/jpeg",
-          quality,
-        );
-      };
-
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error("Failed to load image"));
-      };
-
-      img.src = url;
-    });
-  },
-
-  // Create thumbnail
-  async createThumbnail(file: File, size: number = 200): Promise<Blob> {
-    return this.resizeImage(file, size, size, 0.7);
-  },
-
-  // Get image dimensions
-  async getImageDimensions(
-    file: File,
-  ): Promise<{ width: number; height: number }> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        resolve({ width: img.width, height: img.height });
-      };
-
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error("Failed to load image"));
-      };
-
-      img.src = url;
-    });
-  },
-
-  // Convert to WebP (if supported)
-  async convertToWebP(file: File, quality: number = 0.85): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Canvas context not available"));
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              // Fallback to original
-              resolve(file);
-            }
-          },
-          "image/webp",
-          quality,
-        );
-      };
-
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error("Failed to load image"));
-      };
-
-      img.src = url;
-    });
   },
 };
 
@@ -567,5 +497,3 @@ export const uploadQueue = {
     pendingUploads.length = 0;
   },
 };
-
-export default r2Upload;

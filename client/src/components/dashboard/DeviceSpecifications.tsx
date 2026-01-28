@@ -222,6 +222,13 @@ export function DeviceSpecifications() {
     { icon: "memory", label: "CPU", value: systemInfo.cores },
     { icon: "language", label: "Bahasa", value: systemInfo.language },
     { icon: "schedule", label: "Zona Waktu", value: systemInfo.timezone },
+    { icon: "cloud", label: "Storage Bucket", value: "adzan" },
+    {
+      icon: "link",
+      label: "R2 Public URL",
+      value: "Enabled",
+      badge: { text: "Public", variant: "success" as const },
+    },
   ];
 
   return (

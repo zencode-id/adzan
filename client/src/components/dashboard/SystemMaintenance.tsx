@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { systemEventsApi } from "../../lib/api";
+import { r2Upload, type RemoteFile } from "../../lib/r2Upload";
 
 interface MaintenanceButtonProps {
   icon: string;
@@ -51,11 +52,99 @@ export function SystemMaintenance() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [files, setFiles] = useState<RemoteFile[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchFiles = async () => {
+    setIsLoadingFiles(true);
+    try {
+      const result = await r2Upload.listFiles(10);
+      if (result.success) {
+        setFiles(result.files || []);
+      }
+    } catch {
+      console.error("Failed to fetch files");
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFiles();
+  }, []);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const result = await r2Upload.uploadFile(file, {
+          folder: "uploads",
+          onProgress: (progress) => {
+            const overallProgress = Math.round(
+              ((i + progress / 100) / selectedFiles.length) * 100,
+            );
+            setUploadProgress(overallProgress);
+          },
+        });
+
+        if (result.success) {
+          toast.success(`${file.name} berhasil diupload`);
+        } else {
+          toast.error(`Gagal upload ${file.name}: ${result.error}`);
+        }
+      }
+      fetchFiles(); // Refresh list after all uploads
+    } catch {
+      toast.error("Gagal mengupload file");
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleDeleteFile = async (key: string) => {
+    if (!confirm("Hapus file ini secara permanen?")) return;
+
+    try {
+      const result = await r2Upload.deleteFile(key, "manual-delete");
+      if (result.success) {
+        toast.success("File berhasil dihapus");
+        fetchFiles();
+      } else {
+        toast.error("Gagal menghapus file");
+      }
+    } catch {
+      toast.error("Gagal menghapus file");
+    }
+  };
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
 
   const handleDownloadLogs = async () => {
     setIsDownloading(true);
     try {
-      // Fetch all system events
       const events = await systemEventsApi.getAll(100);
 
       if (events.length === 0) {
@@ -63,7 +152,6 @@ export function SystemMaintenance() {
         return;
       }
 
-      // Format as text file
       const logContent = events
         .map(
           (e) =>
@@ -77,7 +165,6 @@ Generated: ${new Date().toLocaleString("id-ID")}
 Total Events: ${events.length}
 ===========================================\n\n`;
 
-      // Create and download file
       const blob = new Blob([header + logContent], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -89,8 +176,7 @@ Total Events: ${events.length}
       URL.revokeObjectURL(url);
 
       toast.success("Log berhasil diunduh");
-    } catch (error) {
-      console.error("Failed to download logs:", error);
+    } catch {
       toast.error("Gagal mengunduh log");
     } finally {
       setIsDownloading(false);
@@ -100,9 +186,8 @@ Total Events: ${events.length}
   const handleSyncData = async () => {
     setIsSyncing(true);
     try {
-      // Force reload data from server
       window.location.reload();
-    } catch (error) {
+    } catch {
       toast.error("Gagal menyinkronkan data");
     } finally {
       setIsSyncing(false);
@@ -112,8 +197,7 @@ Total Events: ${events.length}
   const handleClearCache = async () => {
     setIsClearing(true);
     try {
-      // Clear localStorage
-      const keysToKeep = ["mosque_id"]; // Keep essential data
+      const keysToKeep = ["mosque_id"];
       const allKeys = Object.keys(localStorage);
       let cleared = 0;
 
@@ -124,10 +208,8 @@ Total Events: ${events.length}
         }
       }
 
-      // Clear sessionStorage
       sessionStorage.clear();
 
-      // Clear cache if available
       if ("caches" in window) {
         const cacheNames = await caches.keys();
         await Promise.all(cacheNames.map((name) => caches.delete(name)));
@@ -135,14 +217,13 @@ Total Events: ${events.length}
 
       toast.success(`Cache berhasil dibersihkan (${cleared} item)`);
 
-      // Log the event
       await systemEventsApi.create({
         title: "Cache dibersihkan",
         description: `${cleared} item cache dihapus`,
         event_type: "info",
       });
-    } catch (error) {
-      console.error("Failed to clear cache:", error);
+    } catch {
+      console.error("Failed to clear cache");
       toast.error("Gagal membersihkan cache");
     } finally {
       setIsClearing(false);
@@ -151,7 +232,6 @@ Total Events: ${events.length}
 
   return (
     <div className="bg-emerald-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden group">
-      {/* Background Icon */}
       <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
         <span className="material-symbols-outlined text-9xl">engineering</span>
       </div>
@@ -160,6 +240,27 @@ Total Events: ${events.length}
         <h3 className="text-xl font-bold mb-6">Pemeliharaan Sistem</h3>
 
         <div className="space-y-4">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept="image/*,video/mp4,video/webm"
+            multiple
+            className="hidden"
+          />
+
+          <MaintenanceButton
+            icon="cloud_upload"
+            iconColor="text-blue-400"
+            label={
+              isUploading
+                ? `Uploading... ${uploadProgress}%`
+                : "Upload File ke R2"
+            }
+            onClick={handleUploadClick}
+            loading={isUploading}
+          />
+
           <MaintenanceButton
             icon="sync"
             iconColor="text-[var(--primary-gold)]"
@@ -184,6 +285,81 @@ Total Events: ${events.length}
             variant="secondary"
             loading={isDownloading}
           />
+        </div>
+
+        <div className="mt-8 pt-8 border-t border-white/10">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-bold uppercase tracking-widest text-emerald-300">
+              Recent Uploads (R2)
+            </h4>
+            <button
+              onClick={fetchFiles}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <span
+                className={`material-symbols-outlined text-sm ${isLoadingFiles ? "animate-spin" : ""}`}
+              >
+                refresh
+              </span>
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {isLoadingFiles && files.length === 0 ? (
+              <div className="animate-pulse flex flex-col gap-2">
+                <div className="h-10 bg-white/5 rounded-xl"></div>
+                <div className="h-10 bg-white/5 rounded-xl"></div>
+              </div>
+            ) : files.length === 0 ? (
+              <p className="text-xs text-white/40 italic">
+                Belum ada file di storage
+              </p>
+            ) : (
+              files.map((file) => (
+                <div
+                  key={file.key}
+                  className="flex items-center justify-between p-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="material-symbols-outlined text-emerald-400 text-lg">
+                      {file.httpMetadata?.contentType?.startsWith("image/")
+                        ? "image"
+                        : "draft"}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate pr-2">
+                        {file.key.split("/").pop()}
+                      </p>
+                      <p className="text-[10px] text-white/40">
+                        {formatBytes(file.size)} •{" "}
+                        {new Date(file.uploaded).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <a
+                      href={`${(import.meta.env.VITE_API_URL || "https://mosque-display-api.adzan.workers.dev").replace(/\/$/, "")}/api/files/${file.key}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-sm">
+                        open_in_new
+                      </span>
+                    </a>
+                    <button
+                      onClick={() => handleDeleteFile(file.key)}
+                      className="p-1.5 hover:bg-red-500/20 rounded-lg text-white/40 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <span className="material-symbols-outlined text-sm">
+                        delete
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
