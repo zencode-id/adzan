@@ -114,35 +114,37 @@ export function MinimalLayout(props: DisplayThemeProps) {
 
         {/* Center - Clock & Next Prayer */}
         <div className="flex-1 flex items-center justify-center">
-          <div className="grid grid-cols-2 gap-24 items-center max-w-5xl w-full">
+          <div className="grid grid-cols-12 gap-12 lg:gap-32 items-center max-w-6xl w-full">
             {/* Clock */}
-            <div>
-              <ClockDisplay time={formattedTime} theme={theme} size="xl" />
-              {nextPrayer && (
-                <div className="mt-6">
-                  <p
-                    className="text-sm mb-1"
-                    style={{ color: theme.colors.textMuted }}
-                  >
-                    {nextPrayer.name} dalam
-                  </p>
-                  <p
-                    className="text-3xl font-mono font-bold"
-                    style={{ color: theme.colors.primary }}
-                  >
-                    {nextPrayer.countdown}
-                  </p>
-                </div>
-              )}
+            <div className="col-span-12 lg:col-span-7 flex flex-col items-center lg:items-end lg:pr-12">
+              <div className="text-center lg:text-right">
+                <ClockDisplay time={formattedTime} theme={theme} size="xl" />
+                {nextPrayer && (
+                  <div className="mt-6">
+                    <p
+                      className="text-sm mb-1 uppercase tracking-widest"
+                      style={{ color: theme.colors.textMuted }}
+                    >
+                      {nextPrayer.name} dalam
+                    </p>
+                    <p
+                      className="text-4xl font-mono font-bold"
+                      style={{ color: theme.colors.primary }}
+                    >
+                      {nextPrayer.countdown}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Prayer Times */}
             <div
-              className="border-l pl-12"
+              className="col-span-12 lg:col-span-5 border-t lg:border-t-0 lg:border-l pt-8 lg:pt-0 lg:pl-16"
               style={{ borderColor: theme.colors.border }}
             >
               <h2
-                className="text-sm uppercase tracking-widest mb-6"
+                className="text-sm uppercase tracking-widest mb-6 font-bold"
                 style={{ color: theme.colors.textMuted }}
               >
                 Jadwal Hari Ini
