@@ -3,6 +3,7 @@
 // Cloudflare R2 integration for theme assets
 // ============================================
 
+import imageCompression from "browser-image-compression";
 import { themeAssetsLocal, generateLocalId, now } from "./localDatabase";
 import type { LocalThemeAsset } from "./localDatabase";
 
@@ -76,6 +77,10 @@ export const r2Upload = {
       themeLocalId?: string;
       assetType?: LocalThemeAsset["assetType"];
       onProgress?: UploadProgressCallback;
+      compress?: boolean; // Auto-compress images before upload
+      maxWidth?: number;
+      maxHeight?: number;
+      quality?: number;
     } = {},
   ): Promise<UploadResult> {
     const validation = validateFile(file);
@@ -89,7 +94,44 @@ export const r2Upload = {
       themeLocalId = "",
       assetType = "background",
       onProgress,
+      compress = true, // Default: compress images
+      maxWidth = 1920,
+      maxHeight = 1080,
+      quality = 0.85,
     } = options;
+
+    // Compress image if enabled and file is an image
+    let fileToUpload: File | Blob = file;
+    if (
+      compress &&
+      file.type.startsWith("image/") &&
+      !file.type.includes("gif")
+    ) {
+      try {
+        console.log(
+          `Compressing image: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`,
+        );
+
+        // Use browser-image-compression library
+        const compressedFile = await imageCompression(file, {
+          maxSizeMB: 1, // Max file size in MB
+          maxWidthOrHeight: Math.max(maxWidth, maxHeight),
+          useWebWorker: true,
+          fileType: file.type as "image/jpeg" | "image/png" | "image/webp",
+          initialQuality: quality,
+        });
+
+        // Only use compressed version if it's smaller
+        if (compressedFile.size < file.size) {
+          fileToUpload = compressedFile;
+          console.log(
+            `Compressed: ${(file.size / 1024).toFixed(1)}KB → ${(compressedFile.size / 1024).toFixed(1)}KB`,
+          );
+        }
+      } catch (e) {
+        console.warn("Compression failed, using original file:", e);
+      }
+    }
 
     const fileName = generateFileName(file, assetType);
     const key = `${folder}/${fileName}`;
@@ -97,7 +139,7 @@ export const r2Upload = {
     try {
       // Use FormData for upload
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", fileToUpload, file.name);
       formData.append("key", key);
       formData.append("assetType", assetType);
       if (themeId) formData.append("themeId", themeId.toString());
@@ -287,8 +329,10 @@ async function uploadWithProgress(
     });
 
     xhr.addEventListener("load", () => {
+      // responseType is 'text' so we need to parse JSON ourselves
+      let responseBody = xhr.responseText;
       resolve(
-        new Response(xhr.response, {
+        new Response(responseBody, {
           status: xhr.status,
           statusText: xhr.statusText,
           headers: {
@@ -307,8 +351,13 @@ async function uploadWithProgress(
       reject(new Error("Upload aborted"));
     });
 
+    xhr.addEventListener("timeout", () => {
+      reject(new Error("Upload timeout"));
+    });
+
     xhr.open("POST", url);
-    xhr.responseType = "json";
+    xhr.responseType = "text"; // Use text to properly create Response
+    xhr.timeout = 60000; // 60 second timeout
     xhr.send(formData);
   });
 }
